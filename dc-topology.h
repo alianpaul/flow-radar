@@ -15,25 +15,13 @@
 #include "ns3/ipv4-interface-container.h"
 
 #include "ns3/openflow-interface.h"
+#include "graph-algo.h"
 
 namespace ns3 {
   
 class DCTopology : public Object {
   
 public:
-
-  /*The Adjacent List Node;
-   */
-  struct AdjNode
-  { 
-    uint32_t from_port;
-    uint32_t to_port;
-    int      id;
-    int      weight;
-  };
-
-  typedef std::vector<AdjNode>         AdjListEntry_t;
-  typedef std::vector<AdjListEntry_t>  AdjList_t;
   
   
   //==========================Public Interface=================
@@ -47,9 +35,11 @@ public:
   /*Build the Nodes, NetDevices according to the Topofile
    *OpenFlowNetDevices and Controller are excluded.
    */
-  void BuildTopo (const char* filename, Ptr<ns3::ofi::Controller> controller);
+  void                    BuildTopo (const char* filename, Ptr<ns3::ofi::Controller> controller);
   
-  const AdjList_t& GetAdjList () const;
+  const Graph::AdjList_t& GetAdjList () const;
+  unsigned                GetNumHost () const;
+  unsigned                GetNumSW   () const;
 
 private:
   DCTopology(const DCTopology&);
@@ -93,7 +83,7 @@ private:
   Ipv4InterfaceContainer          m_OFSwtchIPInterface; //OFSW ip interfaces
   std::vector<NetDeviceContainer> m_switchPortDevices;
 
-  AdjList_t                       m_adjList;
+  Graph::AdjList_t                m_adjList;
   
 };
 

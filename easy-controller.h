@@ -26,6 +26,23 @@ public:
   
   void SetTopo (Ptr<DCTopology> topo);
   
+  
+  /* Use Dijkstra algorithm with the adj list to compute the shortest path
+   * betewn each hosts. Set the switches's flow table along the path.
+   *
+   */
+  void SetDefaultFlowTable ();
+
+   
+private:
+  /* Extract the 5 tuple(flow info) to the open switch flow struct.
+   */
+  void FlowExtract (struct flow * flow_in_key,
+		    uint16_t in_port,
+		    Address mac_src, Address mac_dst,
+		    Ipv4Address ip_src, Ipv4Address ip_dst,
+		    uint16_t port_src, uint16_t port_dst);
+
   /* Proactively modify the flow entry on the OpenFlowSwitch' flow  
    * table with the OFPT_FLOW_MOD message, the actual type of the flow modification
    * is set by @param command.The OFPT_FLOW_MOD msg is built by call BuildFlow() f
@@ -43,28 +60,13 @@ public:
 			 Address mac_src, Address mac_dst,
 			 Ipv4Address ip_src, Ipv4Address ip_dst,
 			 uint16_t port_src, uint16_t port_dst);
-  
 
-  /* Use Dijkstra algorithm with the adj list to compute the shortest path
-   * betewn each hosts. Set the switches's flow table along the path.
-   *
+  /* @path represents a flow of packets(ip layer) 
+   * Add this flow into the flow table entry of the switches
+   * on the path.
    */
-  void SetDefaultFlowTable ();
-
+  void SetFlowOnPath (const Graph::Path_t& path);
   
-
-  
-private:
-  /* Extract the 5 tuple(flow info) to the open switch flow struct.
-   */
-  void FlowExtract (struct flow * flow_in_key,
-		    uint16_t in_port,
-		    Address mac_src, Address mac_dst,
-		    Ipv4Address ip_src, Ipv4Address ip_dst,
-		    uint16_t port_src, uint16_t port_dst);
-
-  std::vector<int> Dijkstra(const DCTopology::AdjList_t& adjList, int from, int to);
-
   Ptr<DCTopology>  m_topo; //the pre read and configed network topo
   
   

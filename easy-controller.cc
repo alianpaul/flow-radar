@@ -3,6 +3,7 @@
 
 #include "easy-controller.h"
 #include "openflow-switch-net-device.h"
+#include "graph-algo.h"
 
 namespace ns3 {
 
@@ -41,27 +42,41 @@ EasyController::SetDefaultFlowTable ()
 
   NS_LOG_FUNCTION(this);
   
-  const DCTopology::AdjList_t& adjList = m_topo->GetAdjList();
+  const Graph::AdjList_t& adjList  = m_topo->GetAdjList();
+        Graph             graph(adjList);
+  const unsigned          numHost  = m_topo->GetNumHost(); 
 
-  
-     
+  /*
+  for(unsigned i = 0; i < numNodes; ++i)
+    {
+      NS_LOG_LOGIC("id: "<<i);
+      for(unsigned j = 0; j < adjList[i].size(); ++j)
+	{
+	  std::cout << adjList[i][j].from_port << " " <<
+		       adjList[i][j].to_port << " " <<
+	               adjList[i][j].id << std::endl;
+	}
+
+    }
+  */
+  graph.BuildPaths();
+
+  for(unsigned from = 0; from < numHost; ++from)
+    {
+      for(unsigned to = 0; to < numHost; ++to)
+	{
+	  if(from == to) continue;
+	  Graph::Path_t path = graph.GetPath(from, to);
+	  SetFlowOnPath (path);
+	}
+    }
 }
 
-std::vector<int>
-EasyController::Dijkstra (const DCTopology::AdjList_t& adjList, int from, int to)
+  
+void
+EasyController::SetFlowOnPath(const Graph::Path_t& path)
 {
-  std::vector<int> dist(adjList.size(), std::numeric_limits<int>::max());
-  std::vector<int> slct;
-  std::vector<int> lft;
-  for(int = 0; i < adjList.size(); ++i )
-    {
-      lft[i] = i;
-    }
-
- 
-  dist[from] = 0;
-
-   
+  
 }
   
 void
@@ -133,18 +148,7 @@ EasyController::FlowExtract (struct flow * flow_in_key,
   
 }
 
-  
-/*
-void
-EasyController::SetAdjMtx (DCTopology::AdjMatrix_t adjMtx)
-{
-  NS_LOG_FUNCTION(this);
-
-  m_adjMtx = adjMtx;
-}
-*/
-
-    
+      
 }
 
 }

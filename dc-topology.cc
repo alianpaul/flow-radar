@@ -54,12 +54,24 @@ DCTopology::BuildTopo (const char* filename, Ptr<ns3::ofi::Controller> controlle
   SetIPAddrAndArp ();
 }
 
-const DCTopology::AdjList_t&
+const Graph::AdjList_t&
 DCTopology::GetAdjList() const
 {
   NS_LOG_FUNCTION(this);
   
   return m_adjList;
+}
+
+unsigned
+DCTopology::GetNumHost() const
+{
+  return m_numHost;
+}
+
+unsigned
+DCTopology::GetNumSW() const
+{
+  return m_numSw;
 }
 
 
@@ -101,69 +113,46 @@ DCTopology::CreateNetDevices (std::ifstream& file)
   while(file >> src >> dst)
     {
       NS_LOG_LOGIC(src<<" "<<dst);
-      
-      if(src < m_numHost) 
+
+      int idFrom, idTo;
+      NetDeviceContainer csmaDevicesFT; 
+      if(src < m_numHost)
 	{
-	  //link from host to switch
-	  int idH  = src;
-	  int idSW = dst - m_numHost;
-
-	  NetDeviceContainer csmaDevicesHS;
-	  csmaDevicesHS = csma.Install(NodeContainer(m_hostNodes.Get(idH),
-						     m_switchNodes.Get(idSW)));
-	  m_hostDevices.Add (csmaDevicesHS.Get(0));
-	  m_switchPortDevices[idSW].Add (csmaDevicesHS.Get(1));
-
-	  NS_LOG_LOGIC ( csmaDevicesHS.Get(0)->GetIfIndex() << " " <<
-			 csmaDevicesHS.Get(0)->GetAddress() );
-	  NS_LOG_LOGIC ( csmaDevicesHS.Get(1)->GetIfIndex() << " " <<
-			 csmaDevicesHS.Get(1)->GetAddress() );
-
-	  AdjNode adjNode;
-	  adjNode.from_port = csmaDevicesHS.Get(0)->GetIfIndex();
-	  adjNode.to_port   = csmaDevicesHS.Get(1)->GetIfIndex();
-	  adjNode.id        = dst;
-	  adjNode.weight    = 1;
-	  m_adjList[src].push_back(adjNode);
-
-	  adjNode.from_port = csmaDevicesHS.Get(1)->GetIfIndex(); 
-	  adjNode.to_port   = csmaDevicesHS.Get(0)->GetIfIndex();
-	  adjNode.id        = src;
-	  adjNode.weight    = 2;
-	  m_adjList[dst].push_back(adjNode);
+	  idFrom = src;
+	  idTo   = dst - m_numHost;
+	  csmaDevicesFT = csma.Install (NodeContainer(m_hostNodes.Get(idFrom),
+						      m_switchNodes.Get(idTo)));
+	  m_hostDevices.Add (csmaDevicesFT.Get(0));
 	}
       else
 	{
-	  //link from switch to switch
-
-	  int idSW1 = src - m_numHost;
-	  int idSW2 = dst - m_numHost;
-
-	  NetDeviceContainer csmaDevicesSS;
-	  csmaDevicesSS = csma.Install(NodeContainer(m_switchNodes.Get(idSW1),
-						     m_switchNodes.Get(idSW2)));
-	  m_switchPortDevices[idSW1].Add (csmaDevicesSS.Get(0));
-	  m_switchPortDevices[idSW2].Add (csmaDevicesSS.Get(1));
-
-	  NS_LOG_LOGIC ( csmaDevicesSS.Get(0)->GetIfIndex() << " " <<
-			 csmaDevicesSS.Get(0)->GetAddress() );
-	  NS_LOG_LOGIC ( csmaDevicesSS.Get(1)->GetIfIndex() << " " <<
-			 csmaDevicesSS.Get(1)->GetAddress() );
-
-	  AdjNode adjNode;
-	  adjNode.from_port = csmaDevicesSS.Get(0)->GetIfIndex();
-	  adjNode.to_port   = csmaDevicesSS.Get(1)->GetIfIndex();
-	  adjNode.id        = dst;
-	  adjNode.weight    = 1;
-	  m_adjList[src].push_back(adjNode);
-
-	  adjNode.from_port = csmaDevicesSS.Get(1)->GetIfIndex(); 
-	  adjNode.to_port   = csmaDevicesSS.Get(0)->GetIfIndex();
-	  adjNode.id        = src;
-	  adjNode.weight    = 1;
-	  m_adjList[dst].push_back(adjNode);
+	  idFrom = src - m_numHost;
+	  idTo   = dst - m_numHost;
+	  csmaDevicesFT = csma.Install (NodeContainer(m_switchNodes.Get(idFrom),
+				                      m_switchNodes.Get(idTo)));
+	  m_switchPortDevices[idFrom].Add(csmaDevicesFT.Get(0));
 	}
 
+      m_switchPortDevices[idTo].Add(csmaDevicesFT.Get(1));
+
+      NS_LOG_LOGIC ( csmaDevicesFT.Get(0)->GetIfIndex() << " " <<
+		     csmaDevicesFT.Get(0)->GetAddress() );
+      NS_LOG_LOGIC ( csmaDevicesFT.Get(1)->GetIfIndex() << " " <<
+		     csmaDevicesFT.Get(1)->GetAddress() );
+
+      Graph::AdjNode_t adjNode;
+      adjNode.from_port = csmaDevicesFT.Get(0)->GetIfIndex();
+      adjNode.to_port   = csmaDevicesFT.Get(1)->GetIfIndex();
+      adjNode.id        = dst;
+      adjNode.weight    = 1;
+      m_adjList[src].push_back(adjNode);
+
+      adjNode.from_port = csmaDevicesFT.Get(1)->GetIfIndex(); 
+      adjNode.to_port   = csmaDevicesFT.Get(0)->GetIfIndex();
+      adjNode.id        = src;
+      adjNode.weight    = 1;
+      m_adjList[dst].push_back(adjNode);     
+      
     }
    
 }
