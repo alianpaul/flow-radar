@@ -18,24 +18,21 @@ class EasyController : public Controller
 public:
   static TypeId GetTypeId (void);
 
-  /*Inherit from Controller
-   *
-   */
-  void ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch, ofpbuf* buffer);
-
-  
   void SetTopo (Ptr<DCTopology> topo);
-  
   
   /* Use Dijkstra algorithm with the adj list to compute the shortest path
    * betewn each hosts. Set the switches's flow table along the path.
    *
    */
   void SetDefaultFlowTable ();
+  
+  /*Inherit from Controller*/
+  void ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch, ofpbuf* buffer);
 
    
 private:
-  /* Extract the 5 tuple(flow info) to the open switch flow struct.
+  /* Build the struct flow (openflow/private/flow.h) from the flow info
+   * Use by ProactiveModFlow Function to prepare the sw_flow_key.flow.
    */
   void FlowExtract (struct flow * flow_in_key,
 		    uint16_t in_port,
@@ -62,14 +59,14 @@ private:
 			 uint16_t port_src, uint16_t port_dst);
 
   /* @path represents a flow of packets(ip layer) 
-   * Add this flow into the flow table entry of the switches
+   * Add this flow entry into the flow table of the switches
    * on the path.
    */
   void SetFlowOnPath (const Graph::Path_t& path);
+
   
-  Ptr<DCTopology>  m_topo; //the pre read and configed network topo
-  
-  
+  Ptr<DCTopology>  m_topo; //the pre read and configed data center network topo
+    
 };
 
   

@@ -35,11 +35,15 @@ public:
   /*Build the Nodes, NetDevices according to the Topofile
    *OpenFlowNetDevices and Controller are excluded.
    */
-  void                    BuildTopo (const char* filename, Ptr<ns3::ofi::Controller> controller);
+  void BuildTopo (const char* filename, Ptr<ns3::ofi::Controller> controller);
   
-  const Graph::AdjList_t& GetAdjList () const;
-  unsigned                GetNumHost () const;
-  unsigned                GetNumSW   () const;
+  const Graph::AdjList_t&      GetAdjList () const;
+  unsigned                     GetNumHost () const;
+  unsigned                     GetNumSW   () const;
+  Ipv4Address                  GetHostIPAddr  (int hostID) const;
+  Address                      GetHostMacAddr (int hostID) const;
+  Ptr<Node>                    GetHostNode    (int hostID) const;
+  Ptr<OpenFlowSwitchNetDevice> GetOFSwtch (int SWID) const;
 
 private:
   DCTopology(const DCTopology&);
@@ -70,8 +74,7 @@ private:
    * in the network. In this way, it's easy to set flow tables of the switch.
    */
   void SetIPAddrAndArp ();
-  
-  
+    
   int                             m_numHost; 
   NodeContainer                   m_hostNodes;
   NetDeviceContainer              m_hostDevices;

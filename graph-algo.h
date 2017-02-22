@@ -16,8 +16,8 @@ public:
    */
   struct AdjNode_t
   {
-    uint32_t from_port;
-    uint32_t to_port;
+    uint16_t from_port;
+    uint16_t to_port;
     int      id;
     int      weight;
   };
@@ -46,8 +46,8 @@ public:
   {
     int src;
     int dst;
-    int spt;
-    int dpt;
+    uint16_t spt;
+    uint16_t dpt;
   };
 
   typedef std::vector<Edge_t> Path_t;

@@ -1003,6 +1003,26 @@ OpenFlowSwitchNetDevice::RunThroughFlowTable (uint32_t packet_uid, int port, boo
       ofpbuf_delete (buffer);
       return;
     }
+  /*
+  NS_LOG_INFO("In RunThroughFlowTable, after flow extract: ");
+  NS_LOG_INFO("wildcards:"<<key.wildcards);
+  NS_LOG_INFO("nw_src:"<<Ipv4Address(key.flow.nw_src));
+  NS_LOG_INFO("nw_dst:"<<Ipv4Address(key.flow.nw_dst));
+  NS_LOG_INFO("in_port:"<<key.flow.in_port);
+  NS_LOG_INFO("dl_vlan:"<<key.flow.dl_vlan);
+  NS_LOG_INFO("dl_type:"<<key.flow.dl_type);
+  NS_LOG_INFO("tp_src:"<<key.flow.tp_src);
+  NS_LOG_INFO("tp_dst:"<<key.flow.tp_dst);
+  Mac48Address s1;
+  s1.CopyFrom(key.flow.dl_src);
+  Mac48Address s2;
+  s2.CopyFrom(key.flow.dl_dst);
+  NS_LOG_INFO("dl_src:"<<s1);
+  NS_LOG_INFO("dl_dst:"<<s2);
+  NS_LOG_INFO("nw_proto:"<<key.flow.nw_proto);
+  NS_LOG_INFO("mpls1:"<<key.flow.mpls_label1);
+  NS_LOG_INFO("mpls2:"<<key.flow.mpls_label2);
+  */
 
   // drop MPLS packets with TTL 1
   if (buffer->l2_5)
@@ -1253,6 +1273,26 @@ OpenFlowSwitchNetDevice::AddFlow (const ofp_flow_mod *ofm)
 
   flow_extract_match (&flow->key, &ofm->match);
 
+  /*
+  NS_LOG_INFO("wildcards:"<<flow->key.wildcards);
+  NS_LOG_INFO("nw_src:"<<Ipv4Address(flow->key.flow.nw_src));
+  NS_LOG_INFO("nw_dst:"<<Ipv4Address(flow->key.flow.nw_dst));
+  NS_LOG_INFO("in_port:"<<flow->key.flow.in_port);
+  NS_LOG_INFO("dl_vlan:"<<flow->key.flow.dl_vlan);
+  NS_LOG_INFO("dl_type:"<<flow->key.flow.dl_type);
+  NS_LOG_INFO("tp_src:"<<flow->key.flow.tp_src);
+  NS_LOG_INFO("tp_dst:"<<flow->key.flow.tp_dst);
+  Mac48Address s1;
+  s1.CopyFrom(flow->key.flow.dl_src);
+  Mac48Address s2;
+  s2.CopyFrom(flow->key.flow.dl_dst);
+  NS_LOG_INFO("dl_src:"<<s1);
+  NS_LOG_INFO("dl_dst:"<<s2);
+  NS_LOG_INFO("nw_proto:"<<flow->key.flow.nw_proto);
+  NS_LOG_INFO("mpls1:"<<flow->key.flow.mpls_label1);
+  NS_LOG_INFO("mpls2:"<<flow->key.flow.mpls_label2);
+  */
+  
   uint16_t v_code = ofi::ValidateActions (&flow->key, ofm->actions, actions_len);
   if (v_code != ACT_VALIDATION_OK)
     {

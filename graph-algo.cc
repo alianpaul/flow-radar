@@ -24,7 +24,7 @@ Graph::Graph (const AdjList_t& adjList)
   for(int i = 0; i < m_numNodes; i++)
     {
       m_paths[i].resize(m_numNodes);
-      m_paths[i][i].dist    = 0;
+      m_paths[i][i].dist = 0;
     }   
 }
 

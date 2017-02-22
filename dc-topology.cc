@@ -50,14 +50,17 @@ DCTopology::BuildTopo (const char* filename, Ptr<ns3::ofi::Controller> controlle
   CreateNetDevices (file);
   
   CreateOFSwitches (controller);
-  
-  SetIPAddrAndArp ();
+
+  /*Set the internet stack,ATTENTION: must set internet stack after all
+   *NetDevices installed, or, the switch port id will start by 1 which should 
+   *be 0;
+   */
+  SetIPAddrAndArp ();  
 }
 
 const Graph::AdjList_t&
 DCTopology::GetAdjList() const
 {
-  NS_LOG_FUNCTION(this);
   
   return m_adjList;
 }
@@ -72,6 +75,33 @@ unsigned
 DCTopology::GetNumSW() const
 {
   return m_numSw;
+}
+
+Ipv4Address
+DCTopology::GetHostIPAddr(int hostID) const
+{
+  return m_hostIPInterface.GetAddress ( hostID );
+}
+
+Address
+DCTopology::GetHostMacAddr(int hostID) const
+{
+  return m_hostDevices.Get(hostID)->GetAddress();
+}
+
+Ptr<Node>
+DCTopology::GetHostNode(int hostID) const
+{
+  return m_hostNodes.Get(hostID);
+}
+
+Ptr<OpenFlowSwitchNetDevice>
+DCTopology::GetOFSwtch(int SWID) const
+{
+  SWID -= m_numHost;
+  Ptr<OpenFlowSwitchNetDevice> sw = DynamicCast<OpenFlowSwitchNetDevice, NetDevice> (m_OFSwtchDevices.Get(SWID));
+  
+  return sw; 
 }
 
 
@@ -92,10 +122,6 @@ DCTopology::CreateNodes (std::ifstream& file)
   m_adjList.resize( m_numSw  + m_numHost );
   m_switchPortDevices.resize (m_numSw);
   
-  /*Install the internet stack on all nodes*/
-  InternetStackHelper internetstack;
-  internetstack.Install (m_hostNodes);
-  internetstack.Install (m_switchNodes);
   
   return;
 }
@@ -112,8 +138,7 @@ DCTopology::CreateNetDevices (std::ifstream& file)
   int src, dst;
   while(file >> src >> dst)
     {
-      NS_LOG_LOGIC(src<<" "<<dst);
-
+     
       int idFrom, idTo;
       NetDeviceContainer csmaDevicesFT; 
       if(src < m_numHost)
@@ -135,10 +160,13 @@ DCTopology::CreateNetDevices (std::ifstream& file)
 
       m_switchPortDevices[idTo].Add(csmaDevicesFT.Get(1));
 
-      NS_LOG_LOGIC ( csmaDevicesFT.Get(0)->GetIfIndex() << " " <<
-		     csmaDevicesFT.Get(0)->GetAddress() );
-      NS_LOG_LOGIC ( csmaDevicesFT.Get(1)->GetIfIndex() << " " <<
-		     csmaDevicesFT.Get(1)->GetAddress() );
+      NS_LOG_INFO ("id: " << src << " port: "
+		    << csmaDevicesFT.Get(0)->GetIfIndex() << " addr: "
+		    << csmaDevicesFT.Get(0)->GetAddress() );
+      
+      NS_LOG_INFO ("id: " << dst << " port: "
+		    << csmaDevicesFT.Get(1)->GetIfIndex() << " addr:"
+		    << csmaDevicesFT.Get(1)->GetAddress() );
 
       Graph::AdjNode_t adjNode;
       adjNode.from_port = csmaDevicesFT.Get(0)->GetIfIndex();
@@ -178,6 +206,14 @@ DCTopology::CreateOFSwitches (Ptr<ns3::ofi::Controller> controller)
 void
 DCTopology::SetIPAddrAndArp()
 {
+
+  NS_LOG_FUNCTION(this);
+  
+  /*Install the internet stack on all nodes*/
+  InternetStackHelper internetstack;
+  internetstack.Install (m_hostNodes);
+  internetstack.Install (m_switchNodes);
+  
   Ipv4AddressHelper ipv4;
   ipv4.SetBase("10.1.1.0", "255.255.255.0");
 
@@ -197,8 +233,8 @@ DCTopology::SetIPAddrAndArp()
       for(int id_remote = 0; id_remote < m_numHost; ++id_remote)
 	{
 	  if(id_local == id_remote) continue;
-	  Ipv4Address ipAddrRemote  = m_hostIPInterface.GetAddress(id_remote);
-	  Address     macAddrRemote = m_hostDevices.Get(id_remote)->GetAddress();
+	  Ipv4Address ipAddrRemote  = GetHostIPAddr (id_remote);
+	  Address     macAddrRemote = GetHostMacAddr (id_remote);
 	  
 	  ArpCache::Entry *entry = cacheLocal->Add (ipAddrRemote);
 	  entry->SetMacAddresss (macAddrRemote);
