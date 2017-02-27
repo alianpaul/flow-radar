@@ -83,6 +83,8 @@ namespace ns3 {
  * \ingroup openflow 
  * \brief A net device that switches multiple LAN segments via an OpenFlow-compatible flow table
  */
+
+
 class OpenFlowSwitchNetDevice : public NetDevice
 {
 public:
@@ -114,7 +116,7 @@ public:
 
   OpenFlowSwitchNetDevice ();
   virtual ~OpenFlowSwitchNetDevice ();
-
+  
   /**
    * \brief Set up the Switch's controller connection.
    *

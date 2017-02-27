@@ -14,8 +14,10 @@
 #include "ns3/net-device-container.h"
 #include "ns3/ipv4-interface-container.h"
 
-#include "ns3/openflow-interface.h"
+#include "openflow-interface.h"
 #include "graph-algo.h"
+#include "flow-encoder.h"
+
 
 namespace ns3 {
   
@@ -68,6 +70,12 @@ private:
    */
   void CreateOFSwitches (Ptr<ns3::ofi::Controller> controller);
 
+  /*Create a FlowEncoder for each openflow switch.
+   *Call flow encoder's SetOFSwtch function register the openflow swtich's
+   *promisc receive call back function.
+   */
+  void CreateFlowEncoders ();
+
   /* Set IP addresses of the hosts and openflow switches
    * and also set ARP cache permantly, because this simulation is focused on
    * ethernet IP packetets. We don't want any ethernet ARP broadcast packets flow 
@@ -83,6 +91,7 @@ private:
   int                             m_numSw;
   NodeContainer                   m_switchNodes;
   NetDeviceContainer              m_OFSwtchDevices;
+  std::vector<Ptr<FlowEncoder> >  m_OFFlowEncoders;
   Ipv4InterfaceContainer          m_OFSwtchIPInterface; //OFSW ip interfaces
   std::vector<NetDeviceContainer> m_switchPortDevices;
 

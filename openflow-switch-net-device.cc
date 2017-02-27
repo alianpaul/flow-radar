@@ -18,6 +18,7 @@
 #ifdef NS3_OPENFLOW
 
 #include "openflow-switch-net-device.h"
+
 #include "ns3/udp-l4-protocol.h"
 #include "ns3/tcp-l4-protocol.h"
 
@@ -394,6 +395,7 @@ OpenFlowSwitchNetDevice::GetMulticast (Ipv6Address addr) const
   return Mac48Address::GetMulticast (addr);
 }
 
+
 // Add a virtual port table entry.
 int
 OpenFlowSwitchNetDevice::AddVPort (const ofp_vport_mod *ovpm)
@@ -613,6 +615,10 @@ OpenFlowSwitchNetDevice::ReceiveFromDevice (Ptr<NetDevice> netdev, Ptr<const Pac
   if (!m_promiscRxCallback.IsNull ())
     {
       m_promiscRxCallback (this, packet, protocol, src, dst, packetType);
+    }
+  else
+    {
+      NS_LOG_INFO("m_callback is null");
     }
 
   Mac48Address dst48 = Mac48Address::ConvertFrom (dst);

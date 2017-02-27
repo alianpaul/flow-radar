@@ -12,7 +12,7 @@
 #include "ns3/openflow-switch-helper.h"
 
 #include "openflow-switch-net-device.h"
-
+#include "flow-encoder.h"
 
 namespace ns3 {
 
@@ -51,6 +51,8 @@ DCTopology::BuildTopo (const char* filename, Ptr<ns3::ofi::Controller> controlle
   
   CreateOFSwitches (controller);
 
+  CreateFlowEncoders(); //for flow radar
+  
   /*Set the internet stack,ATTENTION: must set internet stack after all
    *NetDevices installed, or, the switch port id will start by 1 which should 
    *be 0;
@@ -121,7 +123,7 @@ DCTopology::CreateNodes (std::ifstream& file)
   //Init the container size;
   m_adjList.resize( m_numSw  + m_numHost );
   m_switchPortDevices.resize (m_numSw);
-  
+  m_OFFlowEncoders.resize(m_numSw);
   
   return;
 }
@@ -200,6 +202,18 @@ DCTopology::CreateOFSwitches (Ptr<ns3::ofi::Controller> controller)
       NS_LOG_LOGIC ( "OFSW"<< idSW <<" MacAddr: "<<
 		     m_OFSwtchDevices.Get(idSW)->GetAddress() << " Port: " <<
 		     m_OFSwtchDevices.Get(idSW)->GetIfIndex() );
+    }
+}
+
+void
+DCTopology::CreateFlowEncoders ()
+{
+  NS_LOG_FUNCTION(this);
+  for(int idSW = 0; idSW < m_numSw; ++idSW)
+    {
+      Ptr<FlowEncoder> flowEncoder = CreateObject<FlowEncoder> ();
+      flowEncoder->SetOFSwtch( m_OFSwtchDevices.Get(idSW), idSW + m_numHost);
+      m_OFFlowEncoders[idSW] = flowEncoder;
     }
 }
 
