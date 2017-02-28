@@ -184,6 +184,8 @@ DCTopology::CreateNetDevices (std::ifstream& file)
       m_adjList[dst].push_back(adjNode);     
       
     }
+
+  csma.EnablePcapAll("swtch", false);
    
 }
 
