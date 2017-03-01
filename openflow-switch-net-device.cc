@@ -566,9 +566,6 @@ OpenFlowSwitchNetDevice::BufferFromPacket (Ptr<const Packet> constPacket, Addres
               udp_h->udp_src = htons (udp_hd.GetSourcePort ());     // Source Port
               udp_h->udp_dst = htons (udp_hd.GetDestinationPort ()); // Destination Port
 
-              std::cout << "In BufferFromPacket csb" << std::endl;
-              std::cout << udp_hd.GetSourcePort() << std::endl;
-              std::cout << udp_hd.GetDestinationPort() << std::endl;
               
               udp_h->udp_len = htons (UDP_HEADER_LEN + packet->GetSize ());
 

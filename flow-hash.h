@@ -60,7 +60,7 @@ inline uint32_t murmur3_32(const char *key, uint32_t len, uint32_t seed) {
 
 	return hash;
 }
-
+/*
 struct my_hash1 {
   uint32_t operator()(const char *buf, size_t s) const {
     return murmur3_32(buf, s, 1);
@@ -240,7 +240,7 @@ struct my_hash30 {
     return murmur3_32(buf, s, 30);
   }
 };
-  
+*/  
 }
 
 #endif

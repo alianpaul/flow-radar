@@ -16,10 +16,11 @@
 
 #include "openflow-interface.h"
 #include "graph-algo.h"
-#include "flow-encoder.h"
 
 
 namespace ns3 {
+
+class FlowDecoder;
   
 class DCTopology : public Object {
   
@@ -70,11 +71,13 @@ private:
    */
   void CreateOFSwitches (Ptr<ns3::ofi::Controller> controller);
 
-  /*Create a FlowEncoder for each openflow switch.
-   *Call flow encoder's SetOFSwtch function register the openflow swtich's
-   *promisc receive call back function.
+  /* Create FlowRadar
+   * Install a flow encoder on each openflow switch.
+   *   Call flow encoder's SetOFSwtch function register the openflow swtich's
+   *   promisc receive call back function.
+   * Register each flow encoder to a central flow decoder.
    */
-  void CreateFlowEncoders ();
+  void CreateFlowRadar ();
 
   /* Set IP addresses of the hosts and openflow switches
    * and also set ARP cache permantly, because this simulation is focused on
@@ -91,9 +94,10 @@ private:
   int                             m_numSw;
   NodeContainer                   m_switchNodes;
   NetDeviceContainer              m_OFSwtchDevices;
-  std::vector<Ptr<FlowEncoder> >  m_OFFlowEncoders;
   Ipv4InterfaceContainer          m_OFSwtchIPInterface; //OFSW ip interfaces
   std::vector<NetDeviceContainer> m_switchPortDevices;
+
+  Ptr<FlowDecoder>                m_flowRadar;
 
   Graph::AdjList_t                m_adjList;
   
