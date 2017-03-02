@@ -8,13 +8,16 @@
 #include "ns3/net-device.h"
 
 #include "flow-radar-config.h"
+#include "flow-field.h"
 
 namespace ns3 {
+
   
 class FlowEncoder : public Object
 {
 public:
 
+  
   struct CountTableEntry
   {
     uint32_t xor_srcip;
@@ -22,31 +25,40 @@ public:
     uint16_t xor_srcport;
     uint16_t xor_dstport;
     uint8_t  xor_prot;
-    uint8_t  flow_cnt;
     
+    uint8_t  flow_cnt;
     uint32_t packet_cnt;
 
     CountTableEntry(): xor_srcip(0), xor_dstip(0), xor_srcport(0), xor_dstport(0),
 		       xor_prot(0), flow_cnt(0), packet_cnt(0)
     {}
+
+    inline void XORFlow(const FlowField& flow)
+    {
+      xor_srcip   ^= flow.ipv4srcip;
+      xor_dstip   ^= flow.ipv4dstip;
+      xor_srcport ^= flow.srcport;
+      xor_dstport ^= flow.dstport;
+      xor_prot    ^= flow.ipv4prot;
+    }
+
+    inline FlowField GetFlow()
+    {
+      NS_ASSERT(flow_cnt == 1);
+
+      FlowField flow;
+      
+      flow.ipv4srcip = xor_srcip;
+      flow.ipv4dstip = xor_dstip;
+      flow.srcport   = xor_srcport;
+      flow.dstport   = xor_dstport;
+      flow.ipv4prot  = xor_prot;
+
+      return flow;
+    }
   };
 
   typedef std::vector<CountTableEntry>  CountTable_t;
-  typedef std::bitset<FLOW_FILTER_SIZE> FlowFilter_t;
-
-  struct FlowField
-  {
-    uint32_t ipv4srcip;
-    uint32_t ipv4dstip;
-    uint16_t srcport;
-    uint16_t dstport;
-    uint8_t  ipv4prot;
-
-    FlowField():ipv4srcip(0), ipv4dstip(0), srcport(0), dstport(0), ipv4prot(0)
-    {}
-  };
-  friend  std::ostream& operator<<(std::ostream& os, const FlowField& flow);
-
   
   /*Initialize the flow filter and count table
    */
@@ -65,6 +77,10 @@ public:
    */
   void                Clear();
 
+  /* Calculate the count table idxs;
+   */
+  static std::vector<uint32_t> GetCountTableIdx(const FlowField& flow);
+
   
   /* The call back function for openflow switch net device.
    * When openflow swtich net device receive a new packet(it's ReceiveFromDevice
@@ -75,7 +91,6 @@ public:
 				 Ptr<const Packet> constPacket, uint16_t protocol,
 				 const Address& src, const Address& dst,
 				 NetDevice::PacketType packetType);
-  
 private:
 
   /* Extract the 5 tuple flow infro from packet to struct FlowField
@@ -96,14 +111,13 @@ private:
 
   /* Calculate the flow filter idxs;
    */
-  std::vector<uint32_t> GetFlowFilterIdx(const FlowField& flow) const;
+  static std::vector<uint32_t> GetFlowFilterIdx(const FlowField& flow);
 
-  /* Calculate the count table idxs;
-   */
-  std::vector<uint32_t> GetCountTableIdx(const FlowField& flow) const;
+  
+  typedef std::bitset<FLOW_FILTER_SIZE> FlowFilter_t;
   
   int               m_id;          //id of the switch node
-  FlowFilter_t      m_flowFilter;  //bit
+  FlowFilter_t      m_flowFilter;  //bit  
   CountTable_t      m_countTable;  //count table
 };
 

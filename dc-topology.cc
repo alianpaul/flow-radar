@@ -212,7 +212,7 @@ DCTopology::CreateFlowRadar ()
 {
   NS_LOG_FUNCTION(this);
 
-  m_flowRadar = CreateObject<FlowDecoder>();
+  m_flowRadar = CreateObject<FlowDecoder>(Ptr<DCTopology>(this));
   
   for(int idSW = 0; idSW < m_numSw; ++idSW)
     {

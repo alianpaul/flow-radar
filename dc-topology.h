@@ -99,8 +99,7 @@ private:
 
   Ptr<FlowDecoder>                m_flowRadar;
 
-  Graph::AdjList_t                m_adjList;
-  
+  Graph::AdjList_t                m_adjList;  
 };
 
   

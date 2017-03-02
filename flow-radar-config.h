@@ -7,8 +7,8 @@ namespace ns3
 /*************Flow radar config*****************/
 /*Flow Decoder config
  */
-static const float PERIOD   = 0.001; //10ms
-static const float END_TIME = 0.02;  //10s
+static const float PERIOD   = 0.5; //10ms
+static const float END_TIME = 0.0;  //10s
 
 /*Flow Encoder config
  *The count table entry has been divided into NUM_COUNT_HASH sections.
