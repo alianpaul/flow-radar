@@ -3,7 +3,7 @@
 
 #include "easy-controller.h"
 #include "openflow-switch-net-device.h"
-#include "graph-algo.h"
+#include "dc-topology.h"
 
 namespace ns3 {
 

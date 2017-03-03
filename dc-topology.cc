@@ -33,7 +33,7 @@ DCTopology::GetTypeId(void)
 
 
 void
-DCTopology::BuildTopo (const char* filename, Ptr<ns3::ofi::Controller> controller)
+DCTopology::BuildTopo (const char* filename)
 {
   NS_LOG_FUNCTION(this);
 
@@ -50,15 +50,25 @@ DCTopology::BuildTopo (const char* filename, Ptr<ns3::ofi::Controller> controlle
   
   CreateNetDevices (file);
   
-  CreateOFSwitches (controller);
+  CreateOFSwitches ();
 
-  CreateFlowRadar(); //for flow radar
+  CreateFlowRadar (); //for flow radar
   
-  /*Set the internet stack,ATTENTION: must set internet stack after all
-   *NetDevices installed, or, the switch port id will start by 1 which should 
-   *be 0;
+  /* Set the internet stack,ATTENTION: must set internet stack after all
+   * NetDevices installed, or, the switch port id will start by 1 which should 
+   * be 0;
    */
-  SetIPAddrAndArp ();  
+  SetIPAddrAndArp ();
+
+  Init();
+}
+
+void
+DCTopology::Init()
+{
+  m_flowRadar->Init();
+  m_easyController->SetTopo(Ptr<DCTopology>(this));
+  m_easyController->SetDefaultFlowTable();
 }
 
 const Graph::AdjList_t&
@@ -199,21 +209,24 @@ DCTopology::CreateNetDevices (std::ifstream& file)
 }
 
 void
-DCTopology::CreateOFSwitches (Ptr<ns3::ofi::Controller> controller)
+DCTopology::CreateOFSwitches ()
 {
   NS_LOG_FUNCTION(this);
 
+  m_easyController = CreateObject<ofi::EasyController>();
+  
   OpenFlowSwitchHelper ofSwtch;
   for(int idSW = 0; idSW < m_numSw; ++idSW)
     {
       m_OFSwtchDevices.Add (ofSwtch.Install (m_switchNodes.Get(idSW),
 					     m_switchPortDevices[idSW],
-					     controller ));
+					     m_easyController ));
       
       NS_LOG_LOGIC ( "OFSW"<< idSW <<" MacAddr: "<<
 		     m_OFSwtchDevices.Get(idSW)->GetAddress() << " Port: " <<
 		     m_OFSwtchDevices.Get(idSW)->GetIfIndex() );
     }
+  
 }
 
 void
@@ -232,7 +245,6 @@ DCTopology::CreateFlowRadar ()
       
     }
 
-  m_flowRadar->Init();
 }
 
 void

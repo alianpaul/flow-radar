@@ -14,9 +14,8 @@
 #include "ns3/net-device-container.h"
 #include "ns3/ipv4-interface-container.h"
 
-#include "openflow-interface.h"
 #include "graph-algo.h"
-
+#include "easy-controller.h"
 
 namespace ns3 {
 
@@ -35,10 +34,15 @@ public:
   virtual ~DCTopology();
 
     
-  /*Build the Nodes, NetDevices according to the Topofile
-   *OpenFlowNetDevices and Controller are excluded.
+  /* Build the Nodes, NetDevices according to the Topofile
+   * OpenFlowNetDevices and Controller are excluded.
    */
-  void BuildTopo (const char* filename, Ptr<ns3::ofi::Controller> controller);
+  void BuildTopo (const char* filename);
+
+  /* Easy contoller config the flow table on openflow switches.
+   * Schedule the Flow Radar Decoding process.  
+   */
+  void Init();
   
   const Graph::AdjList_t&      GetAdjList () const;
   unsigned                     GetNumHost () const;
@@ -69,9 +73,10 @@ private:
 
   /*Create ns3 OpenFlowNetDevices(openflowswitches) with the provided
    *switch nodes and swtich port netdevices
+   *Create the easy controller.
    *Called by BuildTopo
    */
-  void CreateOFSwitches (Ptr<ns3::ofi::Controller> controller);
+  void CreateOFSwitches ();
 
   /* Create FlowRadar
    * Install a flow encoder on each openflow switch.
@@ -91,7 +96,7 @@ private:
   int                             m_numHost; 
   NodeContainer                   m_hostNodes;
   NetDeviceContainer              m_hostDevices;
-  Ipv4InterfaceContainer          m_hostIPInterface; //host ip interfaces
+  Ipv4InterfaceContainer          m_hostIPInterface;    //host ip interfaces
   
   int                             m_numSw;
   NodeContainer                   m_switchNodes;
@@ -100,6 +105,7 @@ private:
   std::vector<NetDeviceContainer> m_switchPortDevices;
 
   Ptr<FlowDecoder>                m_flowRadar;
+  Ptr<ofi::EasyController>        m_easyController;
 
   Graph::AdjList_t                m_adjList;  
 };

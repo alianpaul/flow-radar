@@ -6,10 +6,12 @@
 #define EASY_CONTROLLER_H
 
 #include "openflow-interface.h"
-#include "dc-topology.h"
+#include "graph-algo.h" //can not forward declare Graph::Path_t, it's a typedef
 
 namespace ns3 {
 
+class DCTopology;
+  
 namespace ofi {
   
 class EasyController : public Controller
@@ -18,7 +20,7 @@ class EasyController : public Controller
 public:
   static TypeId GetTypeId (void);
 
-  void SetTopo (Ptr<DCTopology> topo);
+  void SetTopo (Ptr<ns3::DCTopology> topo);
   
   /* Use Dijkstra algorithm with the adj list to compute the shortest path
    * betewn each hosts. Set the switches's flow table along the path.
@@ -62,10 +64,10 @@ private:
    * Add this flow entry into the flow table of the switches
    * on the path.
    */
-  void SetFlowOnPath (const Graph::Path_t& path);
+  void SetFlowOnPath (const ns3::Graph::Path_t& path);
 
   
-  Ptr<DCTopology>  m_topo; //the pre read and configed data center network topo
+  Ptr<ns3::DCTopology>  m_topo; //data center network topo
     
 };
 

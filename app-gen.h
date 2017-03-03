@@ -5,18 +5,26 @@
 
 namespace ns3{
 
-class Node;
 class DCTopology;
   
 class  AppGen : public Object
 {
   
 public:
+
+  static const int BULK_APP   = 0; //TCP Bulk Application
+  static const int ONOFF_APP  = 1; //UDP ON OFF Application
+  
   AppGen(Ptr<DCTopology> topo);
   virtual ~AppGen();
+
   /*
-   * Simply use the bulk-send-application.
-   */
+  void GenFlow(int appType, int src, int dst, uint16_t port, uint32_t maxBytes,
+	       float startTime, float stopTime);
+  */
+
+  void GenRandomUDPFlow (int flowCnt);
+  
   void GenTCPFlow(int src, int dst, uint16_t port, uint32_t maxBytes,
 		  float startTime);
   
@@ -26,7 +34,7 @@ public:
 private:
   AppGen(const AppGen&);
   AppGen& operator=(const AppGen&);
-  
+
   Ptr<DCTopology> m_topo;
 };
 

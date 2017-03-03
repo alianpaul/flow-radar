@@ -45,7 +45,7 @@ FlowDecoder::DecodeFlows ()
 	for(itFlow = m_passNewFlows.begin();
 	    itFlow != m_passNewFlows.end(); ++itFlow)
 	  {
-	    //Hacking: the node id == the last Ipv4 address section
+	    //Hacking: the node id == the last Ipv4 address section - 1
 	    int           from = ((*itFlow).ipv4srcip & 0xff) - 1;
 	    int           to   = ((*itFlow).ipv4dstip & 0xff) - 1;
 	    Graph::Path_t path = graph.GetPath(from, to);
@@ -68,27 +68,31 @@ FlowDecoder::DecodeFlows ()
   else
     {
       //Output current decoded flows by swID;
-        SWFlowInfo_t::const_iterator itNode;
-	for(itNode = m_curSWFlowInfo.begin();
-	    itNode != m_curSWFlowInfo.end(); ++itNode)
-	  {
-	    int               swID     = itNode->first;
-	    std::cout << swID << std::endl;
-	    const FlowInfo_t& flowInfo = itNode->second;
+      SWFlowInfo_t::const_iterator itNode;
+      for(itNode = m_curSWFlowInfo.begin();
+	  itNode != m_curSWFlowInfo.end(); ++itNode)
+	{
+	  int               swID     = itNode->first;
+	  std::cout << swID << std::endl;
+	  const FlowInfo_t& flowInfo = itNode->second;
 
-	    FlowInfo_t::const_iterator itFlow;
-	    for(itFlow = flowInfo.begin(); itFlow != flowInfo.end(); ++itFlow)
-	      {
-		std::cout << "Flow: " << itFlow->first << std::endl;
-	      }
+	  FlowInfo_t::const_iterator itFlow;
+	  for(itFlow = flowInfo.begin(); itFlow != flowInfo.end(); ++itFlow)
+	    {
+	      std::cout << itFlow->first << std::endl;
+	    }
       
-	  }
+	}
     }
 }
   
 void
 FlowDecoder::Init()
 {
+  for(unsigned ith = 0; ith < m_encoders.size(); ++ith)
+    {
+      m_curSWFlowInfo[m_encoders[ith]->GetID()] = FlowInfo_t();
+    }
   Simulator::Schedule (Seconds(PERIOD), &FlowDecoder::DecodeFlows, this);
 }
 
@@ -136,7 +140,7 @@ FlowDecoder::SingleDecode(Ptr<FlowEncoder> target)
       FlowField flow      = (*itEntry).GetFlow();
       
       //uint32_t  packetCnt = (*itEntry).packet_cnt;
-      //NS_LOG_INFO ("Flow: "<< flow <<" Pakcet: " << packetCnt );
+      NS_LOG_INFO ("Flow: "<< flow );
       
       m_curSWFlowInfo[swID][flow] = 0;
 
@@ -156,6 +160,8 @@ FlowDecoder::SingleDecode(Ptr<FlowEncoder> target)
 void
 FlowDecoder::DecodeFlowOnPath (const Graph::Path_t& path, const FlowField& flow)
 {
+  NS_LOG_FUNCTION(flow);
+  
   unsigned lst = path.size() - 1;
   for(unsigned ith = 0; ith < lst; ++ith)
     {
@@ -170,6 +176,8 @@ FlowDecoder::DecodeFlowOnPath (const Graph::Path_t& path, const FlowField& flow)
 	   *the flow go through this sw. If so. Update the swtich's flow set 
 	   *and CountTable.
 	   */
+
+	  NS_LOG_INFO (swID<<" doesn't decode this before");
 	  
 	  Ptr<FlowEncoder>  swEncoder = GetEncoderByID (swID);
 	  if ( swEncoder->ContainsFlow(flow) )
