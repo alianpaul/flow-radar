@@ -98,6 +98,15 @@ DCTopology::GetHostNode(int hostID) const
   return m_hostNodes.Get(hostID);
 }
 
+int
+DCTopology::GetHostID(uint32_t ipv4Addr) const
+{
+  /*Hacking: Need a mapping between IP addr and Host ID
+   *Right now, we just induce the Host ID from the Ipv4Addr directly
+   */
+  return ipv4Addr & 0xff ;
+}
+
 Ptr<OpenFlowSwitchNetDevice>
 DCTopology::GetOFSwtch(int SWID) const
 {

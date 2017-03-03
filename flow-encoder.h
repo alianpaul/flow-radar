@@ -73,6 +73,13 @@ public:
   int                 GetID();
 
   CountTable_t&       GetCountTable();
+
+  bool                ContainsFlow (const FlowField& flow);
+
+  /*
+   */
+  void                ClearFlowInCountTable(const FlowField& flow);
+  
   /* Clear flow filter and count table.
    */
   void                Clear();

@@ -56,14 +56,13 @@ public:
   
   ~Graph();
 
-  /*Build all nodes' Path table.
-   */
-  void        BuildPaths();
-
   Path_t      GetPath (int from, int to) const;
   
 private:
 
+  /*Build all nodes' Path table.
+   */
+  void BuildPaths();
 
   /*Use Dijkstra algo to compute the short path from node root to other nodes, 
    *store the paths in root's path table.

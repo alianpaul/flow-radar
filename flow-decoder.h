@@ -7,6 +7,7 @@
 
 #include "flow-field.h"
 #include "dc-topology.h"
+#include "graph-algo.h"
 
 namespace ns3
 {
@@ -21,7 +22,6 @@ public:
   virtual ~FlowDecoder ();
 
   void AddEncoder (Ptr<FlowEncoder> encoder);
-
   void DecodeFlows ();
 
   /* Schedule the decode event
@@ -37,12 +37,27 @@ private:
   typedef std::map<int, FlowInfo_t>                           SWFlowInfo_t;
   //k: switch node id,  v: Flow info on this node
   typedef boost::unordered_set<FlowField, FlowFieldBoostHash> FlowSet_t;
-  
-  void SingleDecode (Ptr<FlowEncoder> target);
 
+  /* Get encoder by swID
+   */
+  Ptr<FlowEncoder>  GetEncoderByID(int swID);
+  
+  /* 
+   */
+  void SingleDecode     (Ptr<FlowEncoder> target);
+  
+  /* Update the sw' m_curSWFlowInfo on the path
+   */
+  void DecodeFlowOnPath (const Graph::Path_t& path, const FlowField& flow);
+
+  
   std::vector<Ptr<FlowEncoder> >  m_encoders;
+  /* Flow decoded on single swtches in this frame
+   */
   SWFlowInfo_t                    m_curSWFlowInfo;
-  FlowSet_t                       m_passNewFlows;  //the new decoded in this pass
+  /* The new decoded in a pass(single decode on all sw)
+   */
+  FlowSet_t                       m_passNewFlows;  
   Ptr<DCTopology>                 m_topo;
 };
 

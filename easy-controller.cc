@@ -60,8 +60,7 @@ EasyController::SetDefaultFlowTable ()
 
     }
   */
-  graph.BuildPaths();
-
+ 
   for(unsigned from = 0; from < numHost; ++from)
     {
       for(unsigned to = 0; to < numHost; ++to)

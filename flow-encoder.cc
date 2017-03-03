@@ -5,7 +5,6 @@
 #include "flow-encoder.h"
 #include "openflow-switch-net-device.h"
 #include "flow-hash.h"
-#include "flow-field.h"
 
 #include "ns3/log.h"
 #include "ns3/udp-l4-protocol.h"
@@ -49,6 +48,37 @@ FlowEncoder::CountTable_t&
 FlowEncoder::GetCountTable()
 {
   return m_countTable;
+}
+
+bool
+FlowEncoder::ContainsFlow (const FlowField& flow)
+{
+  std::vector<uint32_t> filterIdxs = GetFlowFilterIdx(flow);
+
+  bool hasFlow = true;
+
+  for(unsigned ith = 0; ith < NUM_FLOW_HASH; ++ith)
+    {
+      if( !m_flowFilter[filterIdxs[ith]] )
+	{
+	  return false;
+	}
+    }
+  
+  return hasFlow;
+}
+
+void
+FlowEncoder::ClearFlowInCountTable(const FlowField& flow)
+{
+  std::vector<uint32_t> tableIdxs = GetCountTableIdx (flow);
+  for(unsigned ith = 0; ith < NUM_COUNT_HASH; ++ith )
+    {     
+      CountTableEntry& entry = m_countTable[tableIdxs[ith]];
+      entry.XORFlow (flow);
+      entry.flow_cnt   --;
+      NS_ASSERT (entry.flow_cnt >= 0);
+    }
 }
   
 bool

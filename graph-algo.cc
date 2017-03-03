@@ -25,7 +25,9 @@ Graph::Graph (const AdjList_t& adjList)
     {
       m_paths[i].resize(m_numNodes);
       m_paths[i][i].dist = 0;
-    }   
+    }
+
+  BuildPaths ();
 }
 
 void

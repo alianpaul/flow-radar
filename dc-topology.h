@@ -46,6 +46,8 @@ public:
   Ipv4Address                  GetHostIPAddr  (int hostID) const;
   Address                      GetHostMacAddr (int hostID) const;
   Ptr<Node>                    GetHostNode    (int hostID) const;
+  //TODO: GetHostID need a more concrete version.
+  int                          GetHostID      (uint32_t ipv4Addr) const; 
   Ptr<OpenFlowSwitchNetDevice> GetOFSwtch (int SWID) const;
 
 private:
