@@ -20,6 +20,11 @@ public:
     uint16_t to_port;
     int      id;
     int      weight;
+
+    AdjNode_t():from_port(0), to_port(0), id(0), weight(0)
+    {}
+
+    
   };
   typedef std::vector<AdjNode_t>       AdjListEntry_t;
   typedef std::vector<AdjListEntry_t>  AdjList_t;

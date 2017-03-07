@@ -42,13 +42,23 @@ private:
    */
   Ptr<FlowEncoder>  GetEncoderByID(int swID);
   
-  /* 
+  /* Decode flow set pass through this single swtch.
    */
-  void SingleDecode     (Ptr<FlowEncoder> target);
+  void FlowSingleDecode    (Ptr<FlowEncoder> target);
   
-  /* Update the sw' m_curSWFlowInfo on the path
+  /* Update the swtch' m_curSWFlowInfo on the path
    */
-  void DecodeFlowOnPath (const Graph::Path_t& path, const FlowField& flow);
+  void DecodeFlowOnPath    (const Graph::Path_t& path, const FlowField& flow);
+
+  /* Decode flow packet count.
+   */
+  void CounterSingleDecode (Ptr<FlowEncoder> target);
+
+  /* Construct linear equations for CounterSingleDecode
+   */
+  void ConstructLinearEquations (double* A[], double b[],
+				 unsigned m, unsigned n,
+				 Ptr<FlowEncoder> target);
 
   
   std::vector<Ptr<FlowEncoder> >  m_encoders;

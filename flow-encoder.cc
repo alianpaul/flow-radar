@@ -20,7 +20,7 @@ NS_OBJECT_ENSURE_REGISTERED(FlowEncoder);
   
 FlowEncoder::FlowEncoder()
 {
-  m_countTable.resize( COUNT_TABLE_SIZE, CountTableEntry());
+  Clear();
 }
 
 FlowEncoder::~FlowEncoder()

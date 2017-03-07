@@ -7,6 +7,7 @@
 #include "flow-decoder.h"
 #include "flow-encoder.h"
 #include "flow-field.h"
+#include "LSXR/lsqrDense.h"
 
 namespace ns3
 {
@@ -29,12 +30,13 @@ FlowDecoder::DecodeFlows ()
 
   const Graph::AdjList_t& adjList = m_topo->GetAdjList();
   const Graph             graph   (adjList);
-  
+
+  /*  1. Flow decode in this frame    */
   //the first pass;
   std::cout << "1 pass" << std::endl; 
   for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
     {
-      SingleDecode (m_encoders[ith]);
+      FlowSingleDecode (m_encoders[ith]);
     }
 
   
@@ -58,10 +60,16 @@ FlowDecoder::DecodeFlows ()
 	std::cout << ++pass <<" pass"<< std::endl;	
 	for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
 	  {
-	    SingleDecode (m_encoders[ith]);
+	    FlowSingleDecode (m_encoders[ith]);
 	  }
     }
-  
+
+  /*   2.Counter Decode in this frame    */
+  for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
+    {
+      CounterSingleDecode (m_encoders[ith]);
+    }
+    
   // Schedule next decode.
   if(Simulator::Now().GetSeconds() + PERIOD < END_TIME)
     Simulator::Schedule (Seconds(PERIOD), &FlowDecoder::DecodeFlows, this);
@@ -83,6 +91,7 @@ FlowDecoder::DecodeFlows ()
 	    }
       
 	}
+      
     }
 }
   
@@ -124,7 +133,7 @@ bool IsFlowCountOne(const FlowEncoder::CountTableEntry& e)
   return (e.flow_cnt == (uint8_t)1);
 }
 void
-FlowDecoder::SingleDecode(Ptr<FlowEncoder> target)
+FlowDecoder::FlowSingleDecode(Ptr<FlowEncoder> target)
 {
 
   int swID = target->GetID();
@@ -168,6 +177,7 @@ FlowDecoder::DecodeFlowOnPath (const Graph::Path_t& path, const FlowField& flow)
       int          swID          = path[ith].dst;
       FlowInfo_t&  swDcdFlowInfo = m_curSWFlowInfo.at (swID);
       
+      
       FlowInfo_t::iterator itFlow;
       if ( (itFlow = swDcdFlowInfo.find (flow)) == swDcdFlowInfo.end() )
 	{
@@ -189,6 +199,83 @@ FlowDecoder::DecodeFlowOnPath (const Graph::Path_t& path, const FlowField& flow)
 	}
       
     }
+}
+
+void
+FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
+{
+
+  NS_LOG_FUNCTION(target->GetID());
+  
+  int      swID   = target->GetID();
+  const unsigned m      = COUNT_TABLE_SIZE; //Row
+  const unsigned n      = m_curSWFlowInfo.at(swID).size();
+
+  if(n == 0)
+    {
+      NS_LOG_INFO("No flow decoded");
+    }
+
+  double* A[m]; //Puppet
+  double  b[m];
+  //double  x[n];
+  
+  double  AA[m*n]; 
+  for(unsigned i = 0; i < m; ++i)
+    {
+      A[i] = &(AA[i*n]);
+      for(unsigned j = 0; j < n; ++j)
+	{
+	  A[i][j] = 0.0;
+	}
+    }
+
+  ConstructLinearEquations (A, b, m, n, target);
+
+}
+
+void
+FlowDecoder::ConstructLinearEquations (double* A[], double b[],
+				       unsigned m,  unsigned n,
+				       Ptr<FlowEncoder> target)
+{
+ 
+  int                        swID           = target->GetID();
+  FlowInfo_t                &swDcdFlowInfo  = m_curSWFlowInfo.at (swID);
+  FlowEncoder::CountTable_t &swCountTable   = target->GetCountTable();
+  
+  //No more flow will be inserted, so rehashing will not happen
+  FlowInfo_t::const_iterator itFlow;
+  unsigned col;
+  for (col = 0, itFlow = swDcdFlowInfo.begin();
+      itFlow != swDcdFlowInfo.end();
+      ++col, ++itFlow)
+    {
+      const FlowField      &flow    = itFlow->first;
+      std::vector<uint32_t> rowIdxs = target->GetCountTableIdx(flow);
+      for (unsigned ith = 0; ith < rowIdxs.size(); ++ith)
+	{
+	  A[rowIdxs[ith]][col] = 1.0;
+	}
+    }
+
+  NS_ASSERT(col == n && m == COUNT_TABLE_SIZE);
+  
+  for(unsigned row = 0; row < m; ++row)
+    {
+      b[row] = swCountTable[row].packet_cnt;
+    }
+
+  for(unsigned i = 0; i < m; ++i)
+  {
+    for(unsigned j = 0; j < n; ++j)
+      {
+	std::cout << A[i][j] << " ";
+      }
+
+    std::cout << "  " << b[i] << std::endl;
+  }
+  
 }
 
 }
