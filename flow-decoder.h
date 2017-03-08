@@ -1,8 +1,11 @@
 #ifndef FLOW_DECODER_H
 #define FLOW_DECODER_H
 
+#include <iosfwd> 
+
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
+
 #include "ns3/object.h"
 
 #include "flow-field.h"
@@ -24,7 +27,7 @@ public:
   void AddEncoder (Ptr<FlowEncoder> encoder);
   void DecodeFlows ();
 
-  /* Schedule the decode event
+  /* Schedule the decode event and Init containers
    */
   void Init ();
   
@@ -32,11 +35,24 @@ private:
   FlowDecoder(const FlowDecoder&);
   FlowDecoder& operator=(const FlowDecoder&);
 
+  struct Stat_t
+  {
+    std::ofstream* pSaveFile;     //save decoded flow data in this file
+    bool           IsAllDecoded;  //Is all flow decoded,(all flow_cnt == 0)
+    unsigned       numFlow;       //Num of decoded flows
+    
+    Stat_t() : pSaveFile(NULL), IsAllDecoded(true), numFlow(0)
+    {}
+    
+  };
+
   typedef boost::unordered_map<FlowField, uint32_t, FlowFieldBoostHash>  FlowInfo_t;
   //k: flow key,      v: packet count
   typedef std::map<int, FlowInfo_t>                           SWFlowInfo_t;
   //k: switch node id,  v: Flow info on this node
   typedef boost::unordered_set<FlowField, FlowFieldBoostHash> FlowSet_t;
+
+  typedef std::map<int, Stat_t>                               SWStat_t;
 
   /* Get encoder by swID
    */
@@ -45,6 +61,11 @@ private:
   /* Decode flow set pass through this single swtch.
    */
   void FlowSingleDecode    (Ptr<FlowEncoder> target);
+
+  /* Do flow single decode on all swtch, if no new flow decoded(m_passNewFlows
+   * is empty), return false;else return true.
+   */
+  bool FlowAllDecode();
   
   /* Update the swtch' m_curSWFlowInfo on the path
    */
@@ -55,20 +76,32 @@ private:
   void CounterSingleDecode (Ptr<FlowEncoder> target);
 
   /* Construct linear equations for CounterSingleDecode
+   * We must scan the whole count table to construct the linear equations of
+   * this swtch,at the same time of scanning,We can know about whether all
+   * flows of switch is decoded out.So we can update swtch status. 
+   * e.g. num of flows decoded, is all flow decoded.
+   * return false if not flow is decoded out.
    */
-  void ConstructLinearEquations (double* A[], double b[],
+  bool ConstructLinearEquations (double* A[], double b[],
 				 unsigned m, unsigned n,
 				 Ptr<FlowEncoder> target);
 
+  /* Clear Decoder's Info in this decoding fame.
+   */
+  void Clear();
   
   std::vector<Ptr<FlowEncoder> >  m_encoders;
   /* Flow decoded on single swtches in this frame
    */
   SWFlowInfo_t                    m_curSWFlowInfo;
+  /* Swtch status in this frame
+   */
+  SWStat_t                        m_swStat;
   /* The new decoded in a pass(single decode on all sw)
    */
   FlowSet_t                       m_passNewFlows;  
   Ptr<DCTopology>                 m_topo;
+  
 };
 
 }

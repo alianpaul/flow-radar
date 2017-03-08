@@ -88,6 +88,8 @@ AppGen::GenRandomUDPFlow (int flowCnt)
 	
       file << clientAddr << " " << serverAddr << " " << "UDP "<< port << std::endl;
     }
+
+  file.close();
 }
   
 void

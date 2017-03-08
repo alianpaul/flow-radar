@@ -1,5 +1,6 @@
-
+#include <fstream>
 #include <algorithm>
+#include <sstream>
 
 #include "ns3/log.h"
 #include "ns3/simulator.h"
@@ -21,6 +22,13 @@ FlowDecoder::FlowDecoder (Ptr<DCTopology> topo)
 
 FlowDecoder::~FlowDecoder ()
 {
+  for(SWStat_t::iterator it = m_swStat.begin();
+      it != m_swStat.end();
+      ++it)
+    {
+      (it->second).pSaveFile->close();
+      delete (it->second).pSaveFile;
+    }
 }
   
 void
@@ -32,16 +40,8 @@ FlowDecoder::DecodeFlows ()
   const Graph             graph   (adjList);
 
   /*  1. Flow decode in this frame    */
-  //the first pass;
-  std::cout << "1 pass" << std::endl; 
-  for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
-    {
-      FlowSingleDecode (m_encoders[ith]);
-    }
-
   
-  int pass = 1;
-  while(!m_passNewFlows.empty())
+  while( FlowAllDecode() )
     {
         FlowSet_t::const_iterator itFlow;
 	for(itFlow = m_passNewFlows.begin();
@@ -54,14 +54,6 @@ FlowDecoder::DecodeFlows ()
 
 	    DecodeFlowOnPath (path, *itFlow);
 	  }
-	
-	m_passNewFlows.clear(); //clear for the next pass of decode
-
-	std::cout << ++pass <<" pass"<< std::endl;	
-	for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
-	  {
-	    FlowSingleDecode (m_encoders[ith]);
-	  }
     }
 
   /*   2.Counter Decode in this frame    */
@@ -69,30 +61,59 @@ FlowDecoder::DecodeFlows ()
     {
       CounterSingleDecode (m_encoders[ith]);
     }
-    
-  // Schedule next decode.
-  if(Simulator::Now().GetSeconds() + PERIOD < END_TIME)
-    Simulator::Schedule (Seconds(PERIOD), &FlowDecoder::DecodeFlows, this);
-  else
-    {
-      //Output current decoded flows by swID;
-      SWFlowInfo_t::const_iterator itNode;
-      for(itNode = m_curSWFlowInfo.begin();
-	  itNode != m_curSWFlowInfo.end(); ++itNode)
-	{
-	  int               swID     = itNode->first;
-	  std::cout << swID << std::endl;
-	  const FlowInfo_t& flowInfo = itNode->second;
 
-	  FlowInfo_t::const_iterator itFlow;
-	  for(itFlow = flowInfo.begin(); itFlow != flowInfo.end(); ++itFlow)
-	    {
-	      std::cout << itFlow->first << std::endl;
-	    }
+  /*   3.Output the decoded info        */
+  SWFlowInfo_t::const_iterator itNode;
+  for(itNode = m_curSWFlowInfo.begin();
+      itNode != m_curSWFlowInfo.end(); ++itNode)
+    {
+      int               swID     = itNode->first;
+      const FlowInfo_t &flowInfo = itNode->second;
+      const Stat_t     &swStat   = m_swStat.at(swID);
+      std::ofstream    &file     = *(swStat.pSaveFile);
+
+      if(!file)
+	{
+	  NS_LOG_ERROR("Decoded flow file is not open");
+	}
+
+      file <<"Time: "         << Simulator::Now().GetSeconds() << std::endl;
+      file <<"IsAllDecoded: " << swStat.IsAllDecoded           << std::endl;
+      file <<"Flows: "        << swStat.numFlow                << std::endl;
       
+      FlowInfo_t::const_iterator itFlow;
+      for(itFlow = flowInfo.begin(); itFlow != flowInfo.end(); ++itFlow)
+	{
+	  file << itFlow->first << " " << itFlow->second << std::endl;
 	}
       
     }
+
+  /*   4. Clear all the infos(Decoder and Encoder) in this decoding frame */
+  Clear();
+  for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
+    {
+      m_encoders[ith]->Clear();
+    }
+  
+  // Schedule next decode.
+  if(Simulator::Now().GetSeconds() + PERIOD < END_TIME)
+    Simulator::Schedule (Seconds(PERIOD), &FlowDecoder::DecodeFlows, this);
+}
+
+bool
+FlowDecoder::FlowAllDecode()
+{
+  static unsigned pass = 0;
+  NS_LOG_INFO(++pass<<" pass");
+  
+  m_passNewFlows.clear();
+  for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
+    {
+      FlowSingleDecode (m_encoders[ith]);
+    }
+
+  return ( m_passNewFlows.empty() ? false : true);
 }
   
 void
@@ -100,8 +121,26 @@ FlowDecoder::Init()
 {
   for(unsigned ith = 0; ith < m_encoders.size(); ++ith)
     {
-      m_curSWFlowInfo[m_encoders[ith]->GetID()] = FlowInfo_t();
+      const int swID = m_encoders[ith]->GetID();
+      
+      m_curSWFlowInfo[swID] = FlowInfo_t();
+      
+      std::string filename = "sw-";
+      std::stringstream ss;
+      ss << filename << swID << ".txt";
+      filename.clear();
+      ss >> filename;
+
+      m_swStat[swID] = Stat_t();
+      
+      if( !(*(m_swStat[swID].pSaveFile = new std::ofstream(filename.c_str()))) )
+	{
+	  NS_LOG_ERROR("Switch save file open failed");
+	  return;
+	}
+      
     }
+  
   Simulator::Schedule (Seconds(PERIOD), &FlowDecoder::DecodeFlows, this);
 }
 
@@ -207,18 +246,19 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
 
   NS_LOG_FUNCTION(target->GetID());
   
-  int      swID   = target->GetID();
+  int            swID   = target->GetID();
   const unsigned m      = COUNT_TABLE_SIZE; //Row
   const unsigned n      = m_curSWFlowInfo.at(swID).size();
 
   if(n == 0)
     {
       NS_LOG_INFO("No flow decoded");
+      return;
     }
 
-  double* A[m]; //Puppet
+  //Contruct and Solve the linear equations with lsqr
+  double* A[m]; //Proxy
   double  b[m];
-  //double  x[n];
   
   double  AA[m*n]; 
   for(unsigned i = 0; i < m; ++i)
@@ -230,11 +270,57 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
 	}
     }
 
-  ConstructLinearEquations (A, b, m, n, target);
+  if( !ConstructLinearEquations (A, b, m, n, target) )
+    {
+      //Not All flow is decoded, The solve must be wrong.
+      return;
+    }
+
+  lsqrDense solver;
+  const double eps = 1e-15;
+  solver.SetOutputStream( std::cout );
+  solver.SetEpsilon( eps );
+  solver.SetDamp( 0.0 );
+  solver.SetMaximumNumberOfIterations( 100 );
+  solver.SetToleranceA( 1e-16 );
+  solver.SetToleranceB( 1e-16 );
+  solver.SetUpperLimitOnConditional( 1.0 / ( 10 * sqrt( eps ) ) );
+  solver.SetStandardErrorEstimatesFlag( true );
+  solver.SetStandardErrorEstimatesFlag( true );
+  double se[n];
+  solver.SetStandardErrorEstimates( se );
+  solver.SetMatrix(A);
+  double x[n];
+  for(unsigned jth = 0; jth < n; ++jth)
+    {
+      x[jth] = 0.0; //at least 1packet, ps, no use, solver will clear it into 0...
+    }
+  
+  solver.Solve(m, n, b, x);
+  
+  NS_LOG_INFO ("Stopped because " << solver.GetStoppingReason() << " : " << solver.GetStoppingReasonMessage());
+  NS_LOG_INFO ("Used " << solver.GetNumberOfIterationsPerformed() << " Iters");
+  for(unsigned jth = 0; jth < n; ++jth)
+    {
+      NS_LOG_INFO(x[jth]);
+    }
+
+  //Fill the m_curSWFlowInfo packet info
+  FlowInfo_t &swDcdFlowInfo = m_curSWFlowInfo.at(swID);
+  
+  FlowInfo_t::iterator itFlow;
+  unsigned jth;
+  for(jth = 0, itFlow = swDcdFlowInfo.begin();
+      itFlow != swDcdFlowInfo.end();
+      ++jth, ++itFlow)
+    { 
+      itFlow->second = x[jth] + 0.5; //fill the packet cnt; + 0.5 for round;
+    }
+    
 
 }
 
-void
+bool
 FlowDecoder::ConstructLinearEquations (double* A[], double b[],
 				       unsigned m,  unsigned n,
 				       Ptr<FlowEncoder> target)
@@ -243,6 +329,10 @@ FlowDecoder::ConstructLinearEquations (double* A[], double b[],
   int                        swID           = target->GetID();
   FlowInfo_t                &swDcdFlowInfo  = m_curSWFlowInfo.at (swID);
   FlowEncoder::CountTable_t &swCountTable   = target->GetCountTable();
+  Stat_t                    &swStat         = m_swStat.at(swID);
+
+  //Update the swtch status,
+  swStat.numFlow = swDcdFlowInfo.size();
   
   //No more flow will be inserted, so rehashing will not happen
   FlowInfo_t::const_iterator itFlow;
@@ -264,6 +354,12 @@ FlowDecoder::ConstructLinearEquations (double* A[], double b[],
   for(unsigned row = 0; row < m; ++row)
     {
       b[row] = swCountTable[row].packet_cnt;
+      
+      //not all flow decoded out, Update the swtch status
+      if(swStat.IsAllDecoded && swCountTable[row].flow_cnt > 0)
+	{
+	  swStat.IsAllDecoded = false;
+	}
     }
 
   for(unsigned i = 0; i < m; ++i)
@@ -275,7 +371,27 @@ FlowDecoder::ConstructLinearEquations (double* A[], double b[],
 
     std::cout << "  " << b[i] << std::endl;
   }
+
+  return swStat.IsAllDecoded;  
+}
+
+void
+FlowDecoder::Clear()
+{
+  NS_LOG_INFO("Clear Decoder Status");
   
+  SWStat_t::iterator itStat;
+  for( itStat = m_swStat.begin(); itStat != m_swStat.end(); ++itStat )
+    {
+      (itStat->second).IsAllDecoded = true;
+      (itStat->second).numFlow      = 0;
+    }
+
+  SWFlowInfo_t::iterator itFlow;
+  for( itFlow = m_curSWFlowInfo.begin(); itFlow != m_curSWFlowInfo.end(); ++itFlow)
+    {
+      (itFlow->second).clear();
+    }
 }
 
 }
