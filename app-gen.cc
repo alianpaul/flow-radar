@@ -37,6 +37,9 @@ AppGen::GenRandomUDPFlow (int flowCnt)
   */
   std::string     filename = "gen-flow.txt";
   std::ofstream   file;
+  const int packetSize   = 512;
+  const int maxPacketCnt = 20;
+  
   file.open(filename.c_str());
 
   if(!file)
@@ -63,8 +66,9 @@ AppGen::GenRandomUDPFlow (int flowCnt)
 	}
       preports[port] = true;
 
-      
-      int maxBytes = 1024;
+      int packetCnt = ((std::rand()) % maxPacketCnt) + 1;
+
+      int maxBytes = packetSize * packetCnt;
       Ptr<Node>   clientNode = m_topo->GetHostNode(src);
       Ptr<Node>   serverNode = m_topo->GetHostNode(dst);
       Ipv4Address serverAddr = m_topo->GetHostIPAddr(dst);
@@ -86,7 +90,7 @@ AppGen::GenRandomUDPFlow (int flowCnt)
       app = sink.Install(serverNode);
       app.Start(Seconds(0.0));
 	
-      file << clientAddr << " " << serverAddr << " " << "UDP "<< port << std::endl;
+      file << clientAddr << " " << serverAddr << " " << "UDP "<< port << " " << packetCnt << std::endl;
     }
 
   file.close();

@@ -231,8 +231,13 @@ FlowDecoder::DecodeFlowOnPath (const Graph::Path_t& path, const FlowField& flow)
 	  Ptr<FlowEncoder>  swEncoder = GetEncoderByID (swID);
 	  if ( swEncoder->ContainsFlow(flow) )
 	    {
+	      NS_LOG_INFO(swID<<" flow filter matched, add flow.");
 	      swDcdFlowInfo [flow] = 0;
 	      swEncoder->ClearFlowInCountTable (flow);
+	    }
+	  else
+	    {
+	      NS_LOG_INFO(swID<<" flow filter not matched");
 	    }
   
 	}
@@ -256,11 +261,18 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
       return;
     }
 
+  NS_LOG_INFO("Start construction");
+  
   //Contruct and Solve the linear equations with lsqr
   double* A[m]; //Proxy
   double  b[m];
   
-  double  AA[m*n]; 
+  NS_LOG_INFO("A b prepared");
+    
+  double* AA = new double[m*n];
+
+  NS_LOG_INFO("AA prepared");
+  
   for(unsigned i = 0; i < m; ++i)
     {
       A[i] = &(AA[i*n]);
@@ -270,12 +282,17 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
 	}
     }
 
+  NS_LOG_INFO("AA prepared finish");
+  
   if( !ConstructLinearEquations (A, b, m, n, target) )
     {
       //Not All flow is decoded, The solve must be wrong.
+      delete AA;
       return;
     }
 
+  NS_LOG_INFO("Construction complete. Start solve");
+  
   lsqrDense solver;
   const double eps = 1e-15;
   solver.SetOutputStream( std::cout );
@@ -300,10 +317,13 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
   
   NS_LOG_INFO ("Stopped because " << solver.GetStoppingReason() << " : " << solver.GetStoppingReasonMessage());
   NS_LOG_INFO ("Used " << solver.GetNumberOfIterationsPerformed() << " Iters");
+  
+  /*
   for(unsigned jth = 0; jth < n; ++jth)
     {
       NS_LOG_INFO(x[jth]);
     }
+  */
 
   //Fill the m_curSWFlowInfo packet info
   FlowInfo_t &swDcdFlowInfo = m_curSWFlowInfo.at(swID);
@@ -317,7 +337,8 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
       itFlow->second = x[jth] + 0.5; //fill the packet cnt; + 0.5 for round;
     }
     
-
+  delete AA;
+  
 }
 
 bool
@@ -325,6 +346,7 @@ FlowDecoder::ConstructLinearEquations (double* A[], double b[],
 				       unsigned m,  unsigned n,
 				       Ptr<FlowEncoder> target)
 {
+  NS_LOG_FUNCTION (target->GetID());
  
   int                        swID           = target->GetID();
   FlowInfo_t                &swDcdFlowInfo  = m_curSWFlowInfo.at (swID);
@@ -362,6 +384,7 @@ FlowDecoder::ConstructLinearEquations (double* A[], double b[],
 	}
     }
 
+  /*
   for(unsigned i = 0; i < m; ++i)
   {
     for(unsigned j = 0; j < n; ++j)
@@ -371,6 +394,7 @@ FlowDecoder::ConstructLinearEquations (double* A[], double b[],
 
     std::cout << "  " << b[i] << std::endl;
   }
+  */
 
   return swStat.IsAllDecoded;  
 }
