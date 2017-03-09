@@ -37,7 +37,7 @@ public:
   /* Build the Nodes, NetDevices according to the Topofile
    * OpenFlowNetDevices and Controller are excluded.
    */
-  void BuildTopo (const char* filename);
+  void BuildTopo (const char* filename, int traceType);
 
   /* Easy contoller config the flow table on openflow switches.
    * Schedule the Flow Radar Decoding process.  
@@ -69,7 +69,7 @@ private:
    *Create the adjcent list of the topo;
    *Called by BuildTopo
    */
-  void CreateNetDevices (std::ifstream& file);
+  void CreateNetDevices (std::ifstream& file, int traceType);
 
   /*Create ns3 OpenFlowNetDevices(openflowswitches) with the provided
    *switch nodes and swtich port netdevices

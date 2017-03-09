@@ -33,7 +33,7 @@ DCTopology::GetTypeId(void)
 
 
 void
-DCTopology::BuildTopo (const char* filename)
+DCTopology::BuildTopo (const char* filename, int traceType)
 {
   NS_LOG_FUNCTION(this);
 
@@ -48,7 +48,7 @@ DCTopology::BuildTopo (const char* filename)
 
   CreateNodes (file);
   
-  CreateNetDevices (file);
+  CreateNetDevices (file, traceType);
   
   CreateOFSwitches ();
 
@@ -148,7 +148,7 @@ DCTopology::CreateNodes (std::ifstream& file)
 }
 
 void
-DCTopology::CreateNetDevices (std::ifstream& file)
+DCTopology::CreateNetDevices (std::ifstream& file, int traceType)
 {
   NS_LOG_FUNCTION(this);
 
@@ -204,7 +204,13 @@ DCTopology::CreateNetDevices (std::ifstream& file)
       
     }
 
-  csma.EnablePcapAll("swtch", false);
+  if(traceType == 1)
+    csma.EnablePcapAll("swtch", false);
+  else if(traceType == 2)
+    {
+      AsciiTraceHelper ascii;
+      csma.EnableAsciiAll(ascii.CreateFileStream("packet.tr"));
+    }
    
 }
 

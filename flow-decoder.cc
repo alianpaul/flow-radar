@@ -287,7 +287,7 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
   if( !ConstructLinearEquations (A, b, m, n, target) )
     {
       //Not All flow is decoded, The solve must be wrong.
-      delete AA;
+      delete [] AA;
       return;
     }
 
@@ -337,7 +337,7 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
       itFlow->second = x[jth] + 0.5; //fill the packet cnt; + 0.5 for round;
     }
     
-  delete AA;
+  delete []  AA;
   
 }
 
