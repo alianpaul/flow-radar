@@ -9,6 +9,7 @@ namespace ns3
  */
 static const float PERIOD   = 10; //10ms
 static const float END_TIME = 0.0;  //10s
+static const size_t NUM_THREAD = 4; //4 worker thread for counter lsqr decoding
 
 /*Flow Encoder config
  *The count table entry has been divided into NUM_COUNT_HASH sections.

@@ -4,11 +4,13 @@
 
 #include "ns3/log.h"
 #include "ns3/simulator.h"
+#include "ns3/system-thread.h"
 
 #include "flow-decoder.h"
 #include "flow-encoder.h"
 #include "flow-field.h"
 #include "LSXR/lsqrDense.h"
+
 
 namespace ns3
 {
@@ -18,6 +20,7 @@ NS_LOG_COMPONENT_DEFINE("FlowDecoder");
 FlowDecoder::FlowDecoder (Ptr<DCTopology> topo)
   : m_topo (topo)
 {
+  
 }
 
 FlowDecoder::~FlowDecoder ()
@@ -57,11 +60,8 @@ FlowDecoder::DecodeFlows ()
     }
 
   /*   2.Counter Decode in this frame    */
-  for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
-    {
-      CounterSingleDecode (m_encoders[ith]);
-    }
-
+  CounterAllDecode();
+  
   /*   3.Output the decoded info        */
   SWFlowInfo_t::const_iterator itNode;
   for(itNode = m_curSWFlowInfo.begin();
@@ -140,6 +140,13 @@ FlowDecoder::Init()
 	}
       
     }
+
+  for(size_t ith = 0; ith < NUM_THREAD; ++ith)
+    {
+      Ptr<SystemThread> workerThread
+	= Create<SystemThread>( MakeCallback(&FlowDecoder::WorkerThread, this) );
+      m_workerThreads.push_back (workerThread);
+    }
   
   Simulator::Schedule (Seconds(PERIOD), &FlowDecoder::DecodeFlows, this);
 }
@@ -188,7 +195,7 @@ FlowDecoder::FlowSingleDecode(Ptr<FlowEncoder> target)
       FlowField flow      = (*itEntry).GetFlow();
       
       //uint32_t  packetCnt = (*itEntry).packet_cnt;
-      NS_LOG_INFO ("Flow: "<< flow );
+      //NS_LOG_INFO ("Flow: "<< flow );
       
       m_curSWFlowInfo[swID][flow] = 0;
 
@@ -226,18 +233,18 @@ FlowDecoder::DecodeFlowOnPath (const Graph::Path_t& path, const FlowField& flow)
 	   *and CountTable.
 	   */
 
-	  NS_LOG_INFO (swID<<" doesn't decode this before");
+	  //NS_LOG_INFO (swID<<" doesn't decode this before");
 	  
 	  Ptr<FlowEncoder>  swEncoder = GetEncoderByID (swID);
 	  if ( swEncoder->ContainsFlow(flow) )
 	    {
-	      NS_LOG_INFO(swID<<" flow filter matched, add flow.");
+	      //NS_LOG_INFO(swID<<" flow filter matched, add flow.");
 	      swDcdFlowInfo [flow] = 0;
 	      swEncoder->ClearFlowInCountTable (flow);
 	    }
 	  else
 	    {
-	      NS_LOG_INFO(swID<<" flow filter not matched");
+	      //NS_LOG_INFO(swID<<" flow filter not matched");
 	    }
   
 	}
@@ -246,33 +253,58 @@ FlowDecoder::DecodeFlowOnPath (const Graph::Path_t& path, const FlowField& flow)
 }
 
 void
+FlowDecoder::WorkerThread()
+{
+  Ptr<FlowEncoder> onEncoder;
+  while( m_workQueue.TryGetWork(onEncoder) )
+    {
+      std::string info = CounterSingleDecode(onEncoder);
+      {
+	CriticalSection cs(m_workerOutputMutex);
+	NS_LOG_INFO(info.c_str());
+      }
+    }
+
+  //No more works
+  {
+    CriticalSection cs(m_workerDoneMutex);
+    m_numDoneWorkers++;
+  }
+
+  if(m_numDoneWorkers == NUM_THREAD)
+    {
+      //All worker threads finish their work
+      //Synchronize the flow decoder to wake up.
+      m_allWorkersDone.SetCondition (true);
+      m_allWorkersDone.Broadcast();
+    }
+}
+  
+std::string
 FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
 {
 
-  NS_LOG_FUNCTION(target->GetID());
+  std::ostringstream oss;
   
   int            swID   = target->GetID();
   const unsigned m      = COUNT_TABLE_SIZE; //Row
-  const unsigned n      = m_curSWFlowInfo.at(swID).size();
+  const unsigned n      = m_curSWFlowInfo.at(swID).size(); //Col
 
+  oss << "Counter Decode at " << swID << "\n"
+      << "Flows to cal: " << n << "\n";
+  
   if(n == 0)
     {
-      NS_LOG_INFO("No flow decoded");
-      return;
+      oss << "No flow to calculate!\n";
+      return oss.str();
     }
-
-  NS_LOG_INFO("Start construction");
-  
+ 
   //Contruct and Solve the linear equations with lsqr
   double* A[m]; //Proxy
   double  b[m];
-  
-  NS_LOG_INFO("A b prepared");
     
   double* AA = new double[m*n];
-
-  NS_LOG_INFO("AA prepared");
-  
+ 
   for(unsigned i = 0; i < m; ++i)
     {
       A[i] = &(AA[i*n]);
@@ -282,20 +314,16 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
 	}
     }
 
-  NS_LOG_INFO("AA prepared finish");
-  
   if( !ConstructLinearEquations (A, b, m, n, target) )
     {
       //Not All flow is decoded, The solve must be wrong.
+      oss << "Not All flow is decoded out, cal will be wrong!\n";
       delete [] AA;
-      return;
+      return oss.str();
     }
-
-  NS_LOG_INFO("Construction complete. Start solve");
-  
+ 
   lsqrDense solver;
   const double eps = 1e-15;
-  solver.SetOutputStream( std::cout );
   solver.SetEpsilon( eps );
   solver.SetDamp( 0.0 );
   solver.SetMaximumNumberOfIterations( 100 );
@@ -314,10 +342,10 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
     }
   
   solver.Solve(m, n, b, x);
-  
-  NS_LOG_INFO ("Stopped because " << solver.GetStoppingReason() << " : " << solver.GetStoppingReasonMessage());
-  NS_LOG_INFO ("Used " << solver.GetNumberOfIterationsPerformed() << " Iters");
-  
+
+  oss << "Stopped because " << solver.GetStoppingReason() << " : " << solver.GetStoppingReasonMessage() << "\n";
+  oss << "Used " << solver.GetNumberOfIterationsPerformed() << " Iters" << "\n";
+   
   /*
   for(unsigned jth = 0; jth < n; ++jth)
     {
@@ -339,6 +367,33 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
     
   delete []  AA;
   
+  return oss.str();
+}
+
+void
+FlowDecoder::CounterAllDecode ()
+{
+  //Add encoders to work queue;
+  NS_ASSERT(m_workQueue.IsEmpty());
+  for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
+    {
+      m_workQueue.PutWork( m_encoders[ith] );
+    }
+  m_allWorkersDone.SetCondition(false);
+  
+  // Spawn the worker threads.
+  for (unsigned ith = 0; ith < NUM_THREAD; ++ith)
+    {
+      m_workerThreads[ith]->Start();
+    }
+  //Wait for workers to finish their work
+  m_allWorkersDone.Wait();
+  
+  //join all workers threads
+  for(unsigned ith = 0; ith < NUM_THREAD; ++ith)
+    {
+      m_workerThreads[ith]->Join();
+    }
 }
 
 bool
@@ -346,7 +401,6 @@ FlowDecoder::ConstructLinearEquations (double* A[], double b[],
 				       unsigned m,  unsigned n,
 				       Ptr<FlowEncoder> target)
 {
-  NS_LOG_FUNCTION (target->GetID());
  
   int                        swID           = target->GetID();
   FlowInfo_t                &swDcdFlowInfo  = m_curSWFlowInfo.at (swID);

@@ -7,15 +7,19 @@
 #include <boost/unordered_set.hpp>
 
 #include "ns3/object.h"
+#include "ns3/system-condition.h"
+#include "ns3/system-mutex.h"
 
 #include "flow-field.h"
 #include "dc-topology.h"
 #include "graph-algo.h"
+#include "work-queue.h"
 
 namespace ns3
 {
 
 class FlowEncoder;
+class SystemThread;
 
 class FlowDecoder : public Object
 {
@@ -71,9 +75,12 @@ private:
    */
   void DecodeFlowOnPath    (const Graph::Path_t& path, const FlowField& flow);
 
+  void CounterAllDecode ();
+  
   /* Decode flow packet count.
+   * return the CounterSingleDecode info: iters taken, flows solved.
    */
-  void CounterSingleDecode (Ptr<FlowEncoder> target);
+  std::string CounterSingleDecode (Ptr<FlowEncoder> target);
 
   /* Construct linear equations for CounterSingleDecode
    * We must scan the whole count table to construct the linear equations of
@@ -89,6 +96,11 @@ private:
   /* Clear Decoder's Info in this decoding fame.
    */
   void Clear();
+
+
+  /* Worker Thread. Do the CounterDecode job
+   */
+  void WorkerThread();
   
   std::vector<Ptr<FlowEncoder> >  m_encoders;
   /* Flow decoded on single swtches in this frame
@@ -101,6 +113,25 @@ private:
    */
   FlowSet_t                       m_passNewFlows;  
   Ptr<DCTopology>                 m_topo;
+
+  /* mutex protected work queue for multi-threads
+   */
+  WorkQueue<Ptr<FlowEncoder> >    m_workQueue;
+
+  /* Worker threads
+   */
+  std::vector<Ptr<SystemThread> > m_workerThreads;
+  /* Worker threads LOG synchronize mutex;
+   */
+  SystemMutex                     m_workerOutputMutex;
+  /* m_numDoneWorkers mutex;
+   */
+  SystemMutex                     m_workerDoneMutex;
+  size_t                          m_numDoneWorkers;
+  /* Condition variable, wait for all workers
+   */
+  SystemCondition                 m_allWorkersDone;
+  
   
 };
 
