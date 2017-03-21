@@ -10,6 +10,7 @@
 #include "flow-encoder.h"
 #include "flow-field.h"
 #include "LSXR/lsqrDense.h"
+#include "LSXR/lsmrDense.h"
 
 
 namespace ns3
@@ -323,17 +324,18 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
     }
  
   lsqrDense solver;
-  const double eps = 1e-15;
+  //lsmrDense solver;
+  const double eps = 1e-4;
   solver.SetEpsilon( eps );
   solver.SetDamp( 0.0 );
   solver.SetMaximumNumberOfIterations( 100 );
-  solver.SetToleranceA( 1e-16 );
-  solver.SetToleranceB( 1e-16 );
+  solver.SetToleranceA( 1e-5 );
+  solver.SetToleranceB( 1e-5 );
   solver.SetUpperLimitOnConditional( 1.0 / ( 10 * sqrt( eps ) ) );
-  solver.SetStandardErrorEstimatesFlag( true );
-  solver.SetStandardErrorEstimatesFlag( true );
-  double se[n];
-  solver.SetStandardErrorEstimates( se );
+  //solver.SetStandardErrorEstimatesFlag( true );
+  //solver.SetStandardErrorEstimatesFlag( true );
+  //double se[n];
+  //solver.SetStandardErrorEstimates( se );
   solver.SetMatrix(A);
   double x[n];
   for(unsigned jth = 0; jth < n; ++jth)

@@ -40,16 +40,20 @@ public:
   void BuildTopo (const char* filename, int traceType);
 
   /* Easy contoller config the flow table on openflow switches.
-   * Schedule the Flow Radar Decoding process.  
+   * Schedule the Flow Radar Decoding process.
+   * Mute the host net device receive callback(We don't want any packet
+   * generated automatically by up layer protocol. All packet is generated
+   * manually).  
    */
   void Init();
   
   const Graph::AdjList_t&      GetAdjList () const;
   unsigned                     GetNumHost () const;
   unsigned                     GetNumSW   () const;
-  Ipv4Address                  GetHostIPAddr  (int hostID) const;
-  Address                      GetHostMacAddr (int hostID) const;
-  Ptr<Node>                    GetHostNode    (int hostID) const;
+  Ipv4Address                  GetHostIPAddr    (int hostID) const;
+  Address                      GetHostMacAddr   (int hostID) const;
+  Ptr<Node>                    GetHostNode      (int hostID) const;
+  Ptr<NetDevice>               GetHostNetDevice (int hostID) const;
   //TODO: GetHostID need a more concrete version.
   int                          GetHostID      (uint32_t ipv4Addr) const; 
   Ptr<OpenFlowSwitchNetDevice> GetOFSwtch (int SWID) const;

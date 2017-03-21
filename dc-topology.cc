@@ -63,12 +63,32 @@ DCTopology::BuildTopo (const char* filename, int traceType)
   Init();
 }
 
+//Mute callback that do nothing.
+bool MuteReceiveCallback(Ptr<NetDevice>, Ptr<const Packet>, uint16_t, const Address&)
+{
+  NS_LOG_FUNCTION("");
+  return false;
+}
+
+bool MutePromiscReceiveCallback(Ptr<NetDevice>, Ptr<const Packet>, uint16_t, const Address&, const Address&, enum NetDevice::PacketType )
+{
+  NS_LOG_FUNCTION("");
+  return false;
+}
+  
 void
 DCTopology::Init()
 {
   m_flowRadar->Init();
   m_easyController->SetTopo(Ptr<DCTopology>(this));
   m_easyController->SetDefaultFlowTable();
+
+  for(int ith = 0; ith < m_numHost; ++ith)
+    {
+      Ptr<NetDevice> dev = GetHostNetDevice(ith);
+      dev->SetReceiveCallback( MakeCallback (&MuteReceiveCallback) );
+      dev->SetPromiscReceiveCallback( MakeCallback (&MutePromiscReceiveCallback) );
+    }
 }
 
 const Graph::AdjList_t&
@@ -108,6 +128,12 @@ DCTopology::GetHostNode(int hostID) const
   return m_hostNodes.Get(hostID);
 }
 
+Ptr<NetDevice>
+DCTopology::GetHostNetDevice(int hostID) const
+{
+  return m_hostDevices.Get(hostID);
+}
+ 
 int
 DCTopology::GetHostID(uint32_t ipv4Addr) const
 {

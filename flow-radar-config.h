@@ -7,7 +7,7 @@ namespace ns3
 /*************Flow radar config*****************/
 /*Flow Decoder config
  */
-static const float PERIOD   = 10; //10ms
+static const float PERIOD   = 0.5; //10ms
 static const float END_TIME = 0.0;  //10s
 static const size_t NUM_THREAD = 4; //4 worker thread for counter lsqr decoding
 
