@@ -33,7 +33,8 @@ DCTopology::GetTypeId(void)
 
 
 void
-DCTopology::BuildTopo (const char* filename, int traceType)
+DCTopology::BuildTopo (const char* filename, int traceType,
+		       bool enableFlowRadar)
 {
   NS_LOG_FUNCTION(this);
 
@@ -52,7 +53,8 @@ DCTopology::BuildTopo (const char* filename, int traceType)
   
   CreateOFSwitches ();
 
-  CreateFlowRadar (); //for flow radar
+  if(enableFlowRadar)
+    CreateFlowRadar (); //for flow radar
   
   /* Set the internet stack,ATTENTION: must set internet stack after all
    * NetDevices installed, or, the switch port id will start by 1 which should 
@@ -60,7 +62,7 @@ DCTopology::BuildTopo (const char* filename, int traceType)
    */
   SetIPAddrAndArp ();
 
-  Init();
+  Init(enableFlowRadar);
 }
 
 //Mute callback that do nothing.
@@ -77,9 +79,11 @@ bool MutePromiscReceiveCallback(Ptr<NetDevice>, Ptr<const Packet>, uint16_t, con
 }
   
 void
-DCTopology::Init()
+DCTopology::Init(bool enableFlowRadar)
 {
-  m_flowRadar->Init();
+  if(enableFlowRadar)
+    m_flowRadar->Init();
+  
   m_easyController->SetTopo(Ptr<DCTopology>(this));
   m_easyController->SetDefaultFlowTable();
 
@@ -114,6 +118,18 @@ Ipv4Address
 DCTopology::GetHostIPAddr(int hostID) const
 {
   return m_hostIPInterface.GetAddress ( hostID );
+}
+
+std::vector<Ipv4Address>
+DCTopology::GetAllHostIPAddr() const
+{
+  std::vector<Ipv4Address> allip;
+  for(int i = 0; i < m_numHost; ++i)
+    {
+      allip.push_back(m_hostIPInterface.GetAddress ( i ));
+    }
+
+  return allip;
 }
 
 Address

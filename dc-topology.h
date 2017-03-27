@@ -36,21 +36,21 @@ public:
     
   /* Build the Nodes, NetDevices according to the Topofile
    * OpenFlowNetDevices and Controller are excluded.
+   * @filename: topo file name
+   * @traceType:
+   *   0.no trace
+   *   1.pcap trace
+   *   2.ascii trace
+   * @enableFlowRadar:
    */
-  void BuildTopo (const char* filename, int traceType);
-
-  /* Easy contoller config the flow table on openflow switches.
-   * Schedule the Flow Radar Decoding process.
-   * Mute the host net device receive callback(We don't want any packet
-   * generated automatically by up layer protocol. All packet is generated
-   * manually).  
-   */
-  void Init();
+  void BuildTopo (const char* filename, int traceType,
+		  bool  enableFlowRadar);
   
   const Graph::AdjList_t&      GetAdjList () const;
   unsigned                     GetNumHost () const;
   unsigned                     GetNumSW   () const;
   Ipv4Address                  GetHostIPAddr    (int hostID) const;
+  std::vector<Ipv4Address>     GetAllHostIPAddr ()           const;
   Address                      GetHostMacAddr   (int hostID) const;
   Ptr<Node>                    GetHostNode      (int hostID) const;
   Ptr<NetDevice>               GetHostNetDevice (int hostID) const;
@@ -61,6 +61,14 @@ public:
 private:
   DCTopology(const DCTopology&);
   DCTopology& operator=(const DCTopology&);
+
+  /* Easy contoller config the flow table on openflow switches.
+   * Schedule the Flow Radar Decoding process.
+   * Mute the host net device receive callback(We don't want any packet
+   * generated automatically by up layer protocol. All packet is generated
+   * manually).  
+   */
+  void Init(bool enableFlowRadar);
   
   /*Create ns3 Nodes in the NodeContainer according to the Topofile.
    *Also intall internet stack on all nodes

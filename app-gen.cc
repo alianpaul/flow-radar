@@ -81,7 +81,7 @@ AppGen::GenRandomUDPFlow (int flowCnt)
       onoff.SetConstantRate(DataRate("500kb/s"));
       ApplicationContainer app = onoff.Install (clientNode);
       app.Start(Seconds(0.1));
-      app.Stop(Seconds(0.5));
+      app.Stop(Seconds(10.0));
 
       //server
       PacketSinkHelper sink("ns3::UdpSocketFactory",
