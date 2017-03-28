@@ -37,13 +37,12 @@ public:
   {
     PathTableEntry_t():
       known(false),
-      dist(MAX_DIST),
-      before(0)
+      dist(MAX_DIST)
     {
     }
     bool known;
     int  dist;
-    int  before;
+    std::vector<int>  before;
   };
   typedef std::vector<PathTableEntry_t>  PathTable_t;
 
@@ -61,7 +60,9 @@ public:
   
   ~Graph();
 
-  Path_t      GetPath (int from, int to) const;
+  Path_t  GetPath (int from, int to) const;
+
+  void BFS (int root);
   
 private:
 
@@ -69,10 +70,16 @@ private:
    */
   void BuildPaths();
 
+  /*Find all shortest path
+   */
+  
+  
   /*Use Dijkstra algo to compute the short path from node root to other nodes, 
    *store the paths in root's path table.
    */
+  /*
   void Dijkstra (int root);
+  */
 
   /*Find the unknown node in root's pathTable with the shortest smallest dist,
    *If the founded unknown node's dist == MAX_DIST, we'll say that this node is 

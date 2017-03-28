@@ -47,8 +47,9 @@ PacketGenerator::~PacketGenerator()
 }
 
 void
-PacketGenerator::StartGenerator()
+PacketGenerator::StartGenerator(float endTime)
 {
+  m_endTime = endTime;
   ScheduleNextTx();
 }
 
@@ -73,6 +74,9 @@ PacketGenerator::ScheduleNextTx()
       std::string   trash; //for escaping the content
 
       issl >> packetID >> time;
+      if(time > m_endTime) //Turn off PakcetGenerator
+	return;
+			     
       issl >> ipsrc >> ipdst >> l4prot;
       if(l4prot == "TCP" || l4prot == "UDP")
 	{
@@ -92,14 +96,14 @@ PacketGenerator::ScheduleNextTx()
       if(l4prot == "TCP")
 	{
 	  protType = TcpL4Protocol::PROT_NUMBER;
-	  size -= 54;
+	  size = 512;
 	  NS_ASSERT(size >= 0);
 	  if(size > 1500) size = 1500;
 	}
       else if(l4prot == "UDP")
 	{
 	  protType = UdpL4Protocol::PROT_NUMBER;
-	  size -= 42;
+	  size = 512;
 	  NS_ASSERT(size >= 0);
 	  if(size > 1500) size = 1500;     //MTU 1500
 	}

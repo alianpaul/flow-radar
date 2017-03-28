@@ -7,6 +7,7 @@
 
 #include "app-gen.h"
 #include "dc-topology.h"
+#include "PacketGenerator/packet-gen.h"
 
 #include "ns3/applications-module.h"
 #include "ns3/log.h"
@@ -24,6 +25,25 @@ AppGen::~AppGen()
 {
 }
 
+void
+AppGen::SetPacketTrace(const char* filename, float endTime)
+{
+  for(unsigned hostID = 0; hostID < m_topo->GetNumHost(); ++hostID)
+    {
+      Ptr<PacketGenerator> pg
+	= CreateObject<PacketGenerator>(hostID,
+					m_topo->GetHostNetDevice(hostID),
+					m_topo->GetHostNode(hostID),
+					m_topo->GetHostMacAddr(hostID),
+					m_topo->GetHostIPAddr(hostID),
+					m_topo->GetAllHostIPAddr(),
+					filename);
+      pg->StartGenerator(endTime);
+      m_packetGenerators.push_back(pg);
+    }
+}
+
+  
 void
 AppGen::GenRandomUDPFlow (int flowCnt)
 {

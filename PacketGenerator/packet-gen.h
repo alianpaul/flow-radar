@@ -28,14 +28,10 @@ public:
 		  const char*                     filename);
 
   ~PacketGenerator();
-
-  /* TODO: Open your pcap file
-   */
-  void Init(/*your pcap file*/);
   
   /* TODO: Start transmit.
    */
-  void StartGenerator();
+  void StartGenerator(float endTime);
 
   void Send( Ptr<Packet>        packet,
 	     const Ipv4Address& ipdst,
@@ -72,6 +68,7 @@ private:
   Ptr<NetDevice>           m_device;       //host' net device
   Ptr<Node>                m_node;         //host' node
   float                    m_lastTime;     //lastSendTime;
+  float                    m_endTime;
   
   std::vector<Ipv4Address>                 m_allIPAddr;  //other host ip addr in DC.
   boost::unordered_map<uint32_t, unsigned> m_ipDict; //ip dict

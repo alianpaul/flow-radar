@@ -1,5 +1,8 @@
 
 #include <iostream>
+#include <queue>
+#include <algorithm>
+#include <cstdlib>
 
 #include "graph-algo.h"
 
@@ -37,20 +40,25 @@ Graph::BuildPaths ()
   
   for(int i = 0; i < m_numNodes; ++i)
     {
-      Dijkstra(i);
+      //Dijkstra(i);
+      BFS(i);
     }
 }
-
+  
 Graph::Path_t
 Graph::GetPath (int from, int to) const
 {
+  
   const PathTable_t & pathTable = m_paths[from];
         Path_t        path;
-  
-  for(int i = to; i != from; i = pathTable[i].before)
+
+  int before;
+  for(int i = to; i != from; i = before)
     {
       Edge_t    edge;
-      edge.src = pathTable[i].before;
+      unsigned randomIth = std::rand() % pathTable[i].before.size();
+      before = pathTable[i].before[randomIth];
+      edge.src = before;
       edge.dst = i;
 
       const AdjListEntry_t & adjNodes = m_adjList[edge.src];
@@ -80,6 +88,72 @@ Graph::GetPath (int from, int to) const
   return pathRev;
 }
 
+
+void
+Graph::BFS (int root)
+{
+  PathTable_t& pathTable = m_paths[root];
+  pathTable[root].known = true;
+   
+  std::queue<int>   curLayer;
+  std::vector<int>  nextLayer;
+  curLayer.push(root);
+
+  while(!curLayer.empty())
+    {
+      int cur = curLayer.front();
+      curLayer.pop();
+
+      
+      const AdjListEntry_t& curAdj = m_adjList[cur];
+      for(unsigned i = 0; i < curAdj.size(); ++i)
+	{
+	  int adjID = curAdj[i].id;
+	  
+	  //Add adj nodes to the next layer.
+
+	  if(!pathTable[adjID].known)
+	    {
+	      pathTable[adjID].before.push_back(cur);
+	      
+	      if(std::find(nextLayer.begin(), nextLayer.end(), adjID)
+		 ==nextLayer.end())
+		{
+		  nextLayer.push_back(adjID);
+		}
+	    }
+	  
+	}
+
+      if(curLayer.empty())
+	{
+
+	  for(unsigned ith = 0; ith < nextLayer.size(); ++ith)
+	    {
+	      curLayer.push(nextLayer[ith]);
+	      pathTable[nextLayer[ith]].known = true;
+	    }
+
+	  nextLayer.clear();
+	}
+      
+    }
+
+  /*
+    for(unsigned i = 0; i < pathTable.size(); i++)
+      {
+	std::cout << i << ":  ";
+	for(unsigned j = 0; j < pathTable[i].before.size(); ++j)
+	  {
+	    std::cout << pathTable[i].before[j] << " ";
+	  }
+	std::cout << std::endl;
+      }
+  */
+
+}
+  
+/*
 void
 Graph::Dijkstra(int root)
 {
@@ -110,14 +184,15 @@ Graph::Dijkstra(int root)
 	}
     }
 
-  /*
+  
   for(unsigned i = 0; i < pathTable.size(); i++)
     {
       std::cout << i <<" K "<< pathTable[i].known << " D " << pathTable[i].dist
 		<<" B "<< pathTable[i].before << std::endl;
     }
-  */
+  
 }
+*/
 
 int
 Graph::FindSmallestUnknown(PathTable_t& pathTable)

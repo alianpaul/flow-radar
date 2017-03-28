@@ -6,6 +6,7 @@
 namespace ns3{
 
 class DCTopology;
+class PacketGenerator;
   
 class  AppGen : public Object
 {
@@ -22,6 +23,10 @@ public:
   void GenFlow(int appType, int src, int dst, uint16_t port, uint32_t maxBytes,
 	       float startTime, float stopTime);
   */
+  
+  /* Generate packets according to the packet trace
+   */
+  void SetPacketTrace(const char* filename, float endTime);
 
   void GenRandomUDPFlow (int flowCnt);
   
@@ -35,7 +40,8 @@ private:
   AppGen(const AppGen&);
   AppGen& operator=(const AppGen&);
 
-  Ptr<DCTopology> m_topo;
+  Ptr<DCTopology>                     m_topo;
+  std::vector<Ptr<PacketGenerator> >  m_packetGenerators;
 };
 
 }
