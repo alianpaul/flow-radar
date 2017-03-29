@@ -21,7 +21,7 @@ NS_LOG_COMPONENT_DEFINE("FlowDecoder");
 FlowDecoder::FlowDecoder (Ptr<DCTopology> topo)
   : m_topo (topo)
 {
-  
+
 }
 
 FlowDecoder::~FlowDecoder ()
@@ -41,26 +41,28 @@ FlowDecoder::DecodeFlows ()
   NS_LOG_FUNCTION(Simulator::Now().GetSeconds());
 
   /*  1. Flow decode in this frame    */
-  
   while( FlowAllDecode() )
     {
-        FlowSet_t::const_iterator itFlow;
-	for(itFlow = m_passNewFlows.begin();
-	    itFlow != m_passNewFlows.end(); ++itFlow)
-	  {
-	    //Hacking: the node id == the last Ipv4 address section - 1
-	    int           from = ((*itFlow).ipv4srcip & 0xff) - 1;
-	    int           to   = ((*itFlow).ipv4dstip & 0xff) - 1;
-	    Graph::Path_t path = m_topo->GetPath(from, to);
+      unsigned pass = 0;
+      NS_LOG_INFO("Pass: " << pass++);
+      FlowSet_t::const_iterator itFlow;
+      for(itFlow = m_passNewFlows.begin();
+	  itFlow != m_passNewFlows.end(); ++itFlow)
+	{
+	  //Hacking: the node id == the last Ipv4 address section - 1
+	  int           from = ((*itFlow).ipv4srcip & 0xff) - 1;
+	  int           to   = ((*itFlow).ipv4dstip & 0xff) - 1;
+	  Graph::Path_t path = m_topo->GetPath(from, to);
 
-	    DecodeFlowOnPath (path, *itFlow);
-	  }
+	  DecodeFlowOnPath (path, *itFlow);
+	}
     }
-
+  
   /*   2.Counter Decode in this frame    */
   CounterAllDecode();
   
   /*   3.Output the decoded info        */
+  NS_LOG_INFO("Saving the decoded data");
   SWFlowInfo_t::const_iterator itNode;
   for(itNode = m_curSWFlowInfo.begin();
       itNode != m_curSWFlowInfo.end(); ++itNode)
@@ -88,22 +90,29 @@ FlowDecoder::DecodeFlows ()
     }
 
   /*   4. Clear all the infos(Decoder and Encoder) in this decoding frame */
+  NS_LOG_INFO("Clear FlowRadar Status");
   Clear();
   for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
     {
       m_encoders[ith]->Clear();
     }
-  
+
   // Schedule next decode.
   if(Simulator::Now().GetSeconds() + PERIOD < END_TIME)
-    Simulator::Schedule (Seconds(PERIOD), &FlowDecoder::DecodeFlows, this);
+    {
+      NS_LOG_INFO("Waiting to decode the next period flow");
+      Simulator::Schedule (Seconds(PERIOD), &FlowDecoder::DecodeFlows, this);
+    }
+  else
+    {
+      std::cout << "Stop Decoding" << std::endl;
+    }
+
 }
 
 bool
 FlowDecoder::FlowAllDecode()
 {
-  static unsigned pass = 0;
-  NS_LOG_INFO(++pass<<" pass");
   
   m_passNewFlows.clear();
   for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
@@ -181,7 +190,6 @@ FlowDecoder::FlowSingleDecode(Ptr<FlowEncoder> target)
 {
 
   int swID = target->GetID();
-  NS_LOG_INFO ("Decoding at "<< swID);
 
   FlowEncoder::CountTable_t&          countTable   = target->GetCountTable();
   FlowEncoder::CountTable_t::iterator itEntry;
@@ -364,7 +372,7 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
     }
     
   delete []  AA;
-  
+
   return oss.str();
 }
 
@@ -377,6 +385,7 @@ FlowDecoder::CounterAllDecode ()
     {
       m_workQueue.PutWork( m_encoders[ith] );
     }
+  m_numDoneWorkers = 0;
   m_allWorkersDone.SetCondition(false);
   
   // Spawn the worker threads.
@@ -386,12 +395,13 @@ FlowDecoder::CounterAllDecode ()
     }
   //Wait for workers to finish their work
   m_allWorkersDone.Wait();
-  
+
   //join all workers threads
   for(unsigned ith = 0; ith < NUM_THREAD; ++ith)
     {
       m_workerThreads[ith]->Join();
     }
+
 }
 
 bool
@@ -454,7 +464,6 @@ FlowDecoder::ConstructLinearEquations (double* A[], double b[],
 void
 FlowDecoder::Clear()
 {
-  NS_LOG_INFO("Clear Decoder Status");
   
   SWStat_t::iterator itStat;
   for( itStat = m_swStat.begin(); itStat != m_swStat.end(); ++itStat )
