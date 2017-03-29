@@ -5,6 +5,7 @@
 #include <limits>
 #include <vector>
 #include <list>
+#include <map>
 
 namespace ns3 {
 
@@ -55,14 +56,15 @@ public:
   };
 
   typedef std::vector<Edge_t> Path_t;
-    
-  Graph(const AdjList_t& adjList);
-  
+
+  Graph();
   ~Graph();
 
   Path_t  GetPath (int from, int to) const;
 
   void BFS (int root);
+
+  void SetAdjList(const AdjList_t& adjList);
   
 private:
 
@@ -87,9 +89,13 @@ private:
    */
   int  FindSmallestUnknown (PathTable_t& pathTable);
   
-  const AdjList_t          m_adjList;
+  AdjList_t                m_adjList;
   std::vector<PathTable_t> m_paths;
   int                      m_numNodes;
+  mutable std::map<int, Path_t>    m_pathCache;
+  //Path cache, the first time we GetPath(in easy controller),
+  //the Path is generated randomly.
+  //Then the cache is stored to ensured consistent.(is the same in FlowDecoder)
 };
 
 }

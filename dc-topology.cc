@@ -95,12 +95,12 @@ DCTopology::Init(bool enableFlowRadar)
     }
 }
 
-const Graph::AdjList_t&
-DCTopology::GetAdjList() const
+Graph::Path_t
+DCTopology::GetPath(int from, int to) const
 {
-  
-  return m_adjList;
+  return m_graph.GetPath(from, to);
 }
+  
 
 unsigned
 DCTopology::GetNumHost() const
@@ -183,7 +183,6 @@ DCTopology::CreateNodes (std::ifstream& file)
   m_switchNodes.Create ( m_numSw );
 
   //Init the container size;
-  m_adjList.resize( m_numSw  + m_numHost );
   m_switchPortDevices.resize (m_numSw);
   
   return;
@@ -198,6 +197,8 @@ DCTopology::CreateNetDevices (std::ifstream& file, int traceType)
   csma.SetChannelAttribute ("DataRate", StringValue ("100Mbps"));
   csma.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (6560)));
 
+  Graph::AdjList_t adjList;
+  adjList.resize( m_numSw + m_numHost );
   int src, dst;
   while(file >> src >> dst)
     {
@@ -236,15 +237,17 @@ DCTopology::CreateNetDevices (std::ifstream& file, int traceType)
       adjNode.to_port   = csmaDevicesFT.Get(1)->GetIfIndex();
       adjNode.id        = dst;
       adjNode.weight    = 1;
-      m_adjList[src].push_back(adjNode);
+      adjList[src].push_back(adjNode);
 
       adjNode.from_port = csmaDevicesFT.Get(1)->GetIfIndex(); 
       adjNode.to_port   = csmaDevicesFT.Get(0)->GetIfIndex();
       adjNode.id        = src;
       adjNode.weight    = 1;
-      m_adjList[dst].push_back(adjNode);     
+      adjList[dst].push_back(adjNode);     
       
     }
+
+  m_graph.SetAdjList(adjList);
 
   if(traceType == 1)
     csma.EnablePcapAll("swtch", false);

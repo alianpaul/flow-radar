@@ -15,13 +15,16 @@ namespace ns3 {
 /*Use Dijkstra algorithm to calculate the shortest path 
  *and store each node's path to its path table;
  */
-  
-Graph::Graph (const AdjList_t& adjList)
-  : m_adjList(adjList),
-    m_numNodes(adjList.size()) 
-{
-  NS_LOG_LOGIC(this);
 
+Graph::Graph()
+{
+}
+
+void
+Graph::SetAdjList(const AdjList_t& adjList)
+{
+  m_adjList = adjList;
+  m_numNodes = adjList.size();
   //Prepare the path table's size
   m_paths.resize (m_numNodes);
   for(int i = 0; i < m_numNodes; i++)
@@ -48,44 +51,53 @@ Graph::BuildPaths ()
 Graph::Path_t
 Graph::GetPath (int from, int to) const
 {
-  
-  const PathTable_t & pathTable = m_paths[from];
+
+  int key = from * 100 + to; //Hacking!!
+  if(m_pathCache.find(key) == m_pathCache.end())
+    {
+        const PathTable_t & pathTable = m_paths[from];
         Path_t        path;
 
-  int before;
-  for(int i = to; i != from; i = before)
-    {
-      Edge_t    edge;
-      unsigned randomIth = std::rand() % pathTable[i].before.size();
-      before = pathTable[i].before[randomIth];
-      edge.src = before;
-      edge.dst = i;
+	int before;
+	for(int i = to; i != from; i = before)
+	  {
+	    Edge_t    edge;
+	    unsigned randomIth = std::rand() % pathTable[i].before.size();
+	    before = pathTable[i].before[randomIth];
+	    edge.src = before;
+	    edge.dst = i;
 
-      const AdjListEntry_t & adjNodes = m_adjList[edge.src];
-      AdjNode_t dstNode;
-      //find the dst node in src's adjlist
-      for (unsigned adjid = 0; adjid < adjNodes.size(); ++adjid)
-	{
-	  if ( adjNodes[adjid].id == edge.dst )
-	    {
-	      dstNode = adjNodes[adjid];
-	      break;
-	    }
-	}
+	    const AdjListEntry_t & adjNodes = m_adjList[edge.src];
+	    AdjNode_t dstNode;
+	    //find the dst node in src's adjlist
+	    for (unsigned adjid = 0; adjid < adjNodes.size(); ++adjid)
+	      {
+		if ( adjNodes[adjid].id == edge.dst )
+		  {
+		    dstNode = adjNodes[adjid];
+		    break;
+		  }
+	      }
       
-      edge.spt = dstNode.from_port;
-      edge.dpt = dstNode.to_port;
+	    edge.spt = dstNode.from_port;
+	    edge.dpt = dstNode.to_port;
 
-      path.push_back (edge); 
+	    path.push_back (edge); 
+	  }
+
+	//reverse the path;
+	Path_t pathRev;
+	for(int i = path.size() - 1; i >= 0; --i)
+	  {
+	    pathRev.push_back( path[i] );
+	  }
+
+	m_pathCache[key] = pathRev;
+
     }
 
-  //reverse the path;
-  Path_t pathRev;
-  for(int i = path.size() - 1; i >= 0; --i)
-    {
-      pathRev.push_back( path[i] );
-    }
-  return pathRev;
+  return m_pathCache[key];
+  
 }
 
 

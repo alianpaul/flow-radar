@@ -45,8 +45,8 @@ public:
    */
   void BuildTopo (const char* filename, int traceType,
 		  bool  enableFlowRadar);
-  
-  const Graph::AdjList_t&      GetAdjList () const;
+
+  Graph::Path_t                GetPath    (int from, int to) const;
   unsigned                     GetNumHost () const;
   unsigned                     GetNumSW   () const;
   Ipv4Address                  GetHostIPAddr    (int hostID) const;
@@ -119,7 +119,7 @@ private:
   Ptr<FlowDecoder>                m_flowRadar;
   Ptr<ofi::EasyController>        m_easyController;
 
-  Graph::AdjList_t                m_adjList;  
+  Graph                           m_graph;             //Store All path info
 };
 
   

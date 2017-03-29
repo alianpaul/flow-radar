@@ -42,9 +42,7 @@ EasyController::SetDefaultFlowTable ()
 {
 
   NS_LOG_FUNCTION(this);
-  
-  const Graph::AdjList_t& adjList  = m_topo->GetAdjList();
-        Graph             graph(adjList);
+
   const unsigned          numHost  = m_topo->GetNumHost(); 
 
   /*
@@ -66,7 +64,7 @@ EasyController::SetDefaultFlowTable ()
       for(unsigned to = 0; to < numHost; ++to)
 	{
 	  if(from == to) continue;
-	  Graph::Path_t path = graph.GetPath(from, to);
+	  Graph::Path_t path = m_topo->GetPath(from, to);
 	  
 	  NS_LOG_INFO("Built path from " << from << " to " << to);
 	    

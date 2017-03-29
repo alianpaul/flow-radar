@@ -40,9 +40,6 @@ FlowDecoder::DecodeFlows ()
 {
   NS_LOG_FUNCTION(Simulator::Now().GetSeconds());
 
-  const Graph::AdjList_t& adjList = m_topo->GetAdjList();
-  const Graph             graph   (adjList);
-
   /*  1. Flow decode in this frame    */
   
   while( FlowAllDecode() )
@@ -54,7 +51,7 @@ FlowDecoder::DecodeFlows ()
 	    //Hacking: the node id == the last Ipv4 address section - 1
 	    int           from = ((*itFlow).ipv4srcip & 0xff) - 1;
 	    int           to   = ((*itFlow).ipv4dstip & 0xff) - 1;
-	    Graph::Path_t path = graph.GetPath(from, to);
+	    Graph::Path_t path = m_topo->GetPath(from, to);
 
 	    DecodeFlowOnPath (path, *itFlow);
 	  }
@@ -216,7 +213,6 @@ FlowDecoder::FlowSingleDecode(Ptr<FlowEncoder> target)
 void
 FlowDecoder::DecodeFlowOnPath (const Graph::Path_t& path, const FlowField& flow)
 {
-  NS_LOG_FUNCTION(flow);
   
   unsigned lst = path.size() - 1;
   for(unsigned ith = 0; ith < lst; ++ith)
@@ -325,12 +321,12 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
  
   lsqrDense solver;
   //lsmrDense solver;
-  const double eps = 1e-4;
+  const double eps = 1e-5;
   solver.SetEpsilon( eps );
   solver.SetDamp( 0.0 );
   solver.SetMaximumNumberOfIterations( 100 );
-  solver.SetToleranceA( 1e-5 );
-  solver.SetToleranceB( 1e-5 );
+  solver.SetToleranceA( 1e-6 );
+  solver.SetToleranceB( 1e-6 );
   solver.SetUpperLimitOnConditional( 1.0 / ( 10 * sqrt( eps ) ) );
   //solver.SetStandardErrorEstimatesFlag( true );
   //solver.SetStandardErrorEstimatesFlag( true );
