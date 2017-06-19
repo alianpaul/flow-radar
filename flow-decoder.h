@@ -101,6 +101,13 @@ private:
   /* Worker Thread. Do the CounterDecode job
    */
   void WorkerThread();
+
+  /*Output*/
+  void OutputOriginalCounter();
+
+  void OutputRealFlows();
+
+  void OutputDecodeInfo();
   
   std::vector<Ptr<FlowEncoder> >  m_encoders;
   /* Flow decoded on single swtches in this frame
@@ -111,7 +118,9 @@ private:
   SWStat_t                        m_swStat;
   /* The new decoded in a pass(single decode on all sw)
    */
-  FlowSet_t                       m_passNewFlows;  
+  FlowSet_t                       m_passNewFlows;
+
+  
   Ptr<DCTopology>                 m_topo;
 
   /* mutex protected work queue for multi-threads

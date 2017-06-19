@@ -10,6 +10,8 @@
 #include "flow-radar-config.h"
 #include "flow-field.h"
 
+#include <boost/unordered_map.hpp>
+
 namespace ns3 {
 
   
@@ -59,6 +61,8 @@ public:
   };
 
   typedef std::vector<CountTableEntry>  CountTable_t;
+  /* for real flow */
+  typedef boost::unordered_map<FlowField, uint16_t, FlowFieldBoostHash> FlowInfo_t;
   
   /*Initialize the flow filter and count table
    */
@@ -74,6 +78,8 @@ public:
 
   CountTable_t&       GetCountTable();
 
+  const FlowInfo_t&   GetRealFlowCounter() { return m_realFlowCounter; }
+
   bool                ContainsFlow (const FlowField& flow);
 
   /*
@@ -86,7 +92,7 @@ public:
 
   /* Calculate the count table idxs;
    */
-  static std::vector<uint32_t> GetCountTableIdx(const FlowField& flow);
+  std::vector<uint32_t> GetCountTableIdx(const FlowField& flow);
 
   
   /* The call back function for openflow switch net device.
@@ -108,14 +114,18 @@ private:
    * flow filter and return true;
    * else return false;
    */
-  bool         UpdateFlowFilter(const FlowField& flow);
+  bool      UpdateFlowFilter(const FlowField& flow);
 
   /* Update the flow according count table.
    * If the flow is new, we xor the flow fields,
    * else, we only update the packet count.
    */
-  void         UpdateCountTable(const FlowField& flow, bool isNew);
+  void      UpdateCountTable(const FlowField& flow, bool isNew);
 
+  /* m_realFlowCounter stores the real flow size.
+   */
+  void      UpdateRealFlowCounter(const FlowField& flow);
+  
   /* Calculate the flow filter idxs;
    */
   static std::vector<uint32_t> GetFlowFilterIdx(const FlowField& flow);
@@ -123,9 +133,13 @@ private:
   
   typedef std::bitset<FLOW_FILTER_SIZE> FlowFilter_t;
   
-  int               m_id;          //id of the switch node
-  FlowFilter_t      m_flowFilter;  //bit  
-  CountTable_t      m_countTable;  //count table
+  int                     m_id;             //id of the switch node
+  FlowFilter_t            m_flowFilter;     //bit  
+  CountTable_t            m_countTable;     //count table
+  FlowInfo_t              m_realFlowCounter;
+  std::vector<unsigned>   m_seeds;          //CounterTable hash seeds
+  static unsigned         m_nextSeed;       //global next seed to add.
+  uint64_t                m_packetReceived; //
 };
 
  

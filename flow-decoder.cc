@@ -21,7 +21,6 @@ NS_LOG_COMPONENT_DEFINE("FlowDecoder");
 FlowDecoder::FlowDecoder (Ptr<DCTopology> topo)
   : m_topo (topo)
 {
-
 }
 
 FlowDecoder::~FlowDecoder ()
@@ -40,10 +39,13 @@ FlowDecoder::DecodeFlows ()
 {
   NS_LOG_FUNCTION(Simulator::Now().GetSeconds());
 
+  OutputOriginalCounter();
+  OutputRealFlows();
+  
   /*  1. Flow decode in this frame    */
+  unsigned pass = 0;
   while( FlowAllDecode() )
     {
-      unsigned pass = 0;
       NS_LOG_INFO("Pass: " << pass++);
       FlowSet_t::const_iterator itFlow;
       for(itFlow = m_passNewFlows.begin();
@@ -63,31 +65,7 @@ FlowDecoder::DecodeFlows ()
   
   /*   3.Output the decoded info        */
   NS_LOG_INFO("Saving the decoded data");
-  SWFlowInfo_t::const_iterator itNode;
-  for(itNode = m_curSWFlowInfo.begin();
-      itNode != m_curSWFlowInfo.end(); ++itNode)
-    {
-      int               swID     = itNode->first;
-      const FlowInfo_t &flowInfo = itNode->second;
-      const Stat_t     &swStat   = m_swStat.at(swID);
-      std::ofstream    &file     = *(swStat.pSaveFile);
-
-      if(!file)
-	{
-	  NS_LOG_ERROR("Decoded flow file is not open");
-	}
-
-      file <<"Time: "         << Simulator::Now().GetSeconds() << std::endl;
-      file <<"IsAllDecoded: " << swStat.IsAllDecoded           << std::endl;
-      file <<"Flows: "        << swStat.numFlow                << std::endl;
-      
-      FlowInfo_t::const_iterator itFlow;
-      for(itFlow = flowInfo.begin(); itFlow != flowInfo.end(); ++itFlow)
-	{
-	  file << itFlow->first << " " << itFlow->second << std::endl;
-	}
-      
-    }
+  OutputDecodeInfo();
 
   /*   4. Clear all the infos(Decoder and Encoder) in this decoding frame */
   NS_LOG_INFO("Clear FlowRadar Status");
@@ -105,11 +83,100 @@ FlowDecoder::DecodeFlows ()
     }
   else
     {
-      std::cout << "Stop Decoding" << std::endl;
+      NS_LOG_INFO("Stop Decoding");
     }
 
 }
 
+void
+FlowDecoder::OutputOriginalCounter()
+{
+ SWFlowInfo_t::const_iterator itswc;
+ for(itswc = m_curSWFlowInfo.begin();
+     itswc != m_curSWFlowInfo.end(); ++itswc)
+   {
+     int               swID     = itswc->first;
+     const Stat_t     &swStat   = m_swStat.at(swID);
+     std::ofstream    &file     = *(swStat.pSaveFile);
+     Ptr<FlowEncoder>  target   = GetEncoderByID(swID);
+
+     /*  Output Original Counters */
+     file << "counters" << std::endl;
+     FlowEncoder::CountTable_t::const_iterator itc;
+     const FlowEncoder::CountTable_t& counterTable = target->GetCountTable();
+     for(itc = counterTable.begin(); itc != counterTable.end(); ++itc)
+       {
+	 file << itc->packet_cnt << std::endl;
+       }
+   }
+ 
+}
+
+void
+FlowDecoder::OutputRealFlows()
+{
+ SWFlowInfo_t::const_iterator itsw;
+ for(itsw = m_curSWFlowInfo.begin();
+     itsw != m_curSWFlowInfo.end(); ++itsw)
+   {
+     int               swID     = itsw->first;
+     Ptr<FlowEncoder>  target   = GetEncoderByID(swID);
+
+     /*  Output Real Flow Size */
+     std::string rffilename = "sw-";
+     std::stringstream ss;
+     ss << rffilename << swID << "-t-10-real-flow.txt";
+     ss >> rffilename;
+     std::ofstream rffile(rffilename.c_str());
+     FlowEncoder::FlowInfo_t::const_iterator itf; 
+     const FlowEncoder::FlowInfo_t& realFlows = target->GetRealFlowCounter();
+     for(itf = realFlows.begin(); itf != realFlows.end(); ++itf)
+       {
+	 rffile << itf->first << " " << itf->second << std::endl;
+       }
+   }
+ 
+}
+
+void
+FlowDecoder::OutputDecodeInfo()
+{
+  SWFlowInfo_t::const_iterator itsw;
+  for(itsw = m_curSWFlowInfo.begin();
+      itsw != m_curSWFlowInfo.end(); ++itsw)
+    {
+      int               swID     = itsw->first;
+      const Stat_t     &swStat   = m_swStat.at(swID);
+      std::ofstream    &file     = *(swStat.pSaveFile);
+      Ptr<FlowEncoder>  target   = GetEncoderByID(swID);
+      if(!file)
+	{
+	  NS_LOG_ERROR("Decoded flow file is not open");
+	}
+
+      file << "flows" <<std::endl;
+      //file <<"Time: "         << Simulator::Now().GetSeconds() << std::endl;
+      file <<"IsAllDecoded: " << swStat.IsAllDecoded           << std::endl;
+      file <<"FlowCnt: "      << swStat.numFlow                << std::endl;
+      
+      /* Output All decoded flows
+       * srcip dstip port srcport dstport hashpos1 hashpos2 ...
+       */
+      const FlowInfo_t &flowInfo = itsw->second;
+      FlowInfo_t::const_iterator itFlow;
+      for(itFlow = flowInfo.begin(); itFlow != flowInfo.end(); ++itFlow)
+	{
+	  file << itFlow->first; // << itFlow->second << std::endl;
+	  std::vector<uint32_t> idxs =  target->GetCountTableIdx( itFlow->first );
+	  for(size_t i = 0; i < idxs.size(); ++i)
+	    {
+	      file << " " << idxs[i];
+	    }
+	  file << std::endl;
+	}
+    }
+}
+  
 bool
 FlowDecoder::FlowAllDecode()
 {
@@ -140,7 +207,8 @@ FlowDecoder::Init()
 
       m_swStat[swID] = Stat_t();
       
-      if( !(*(m_swStat[swID].pSaveFile = new std::ofstream(filename.c_str()))) )
+      if( !(*(m_swStat[swID].pSaveFile
+	      = new std::ofstream(filename.c_str()))))
 	{
 	  NS_LOG_ERROR("Switch save file open failed");
 	  return;
@@ -197,13 +265,13 @@ FlowDecoder::FlowSingleDecode(Ptr<FlowEncoder> target)
 				 IsFlowCountOne))
 	!= countTable.end() )
     {
-      //Find a pure cell
+      //Finded a pure cell
       FlowField flow      = (*itEntry).GetFlow();
       
-      //uint32_t  packetCnt = (*itEntry).packet_cnt;
+      uint32_t  packetCnt = (*itEntry).packet_cnt;
       //NS_LOG_INFO ("Flow: "<< flow );
       
-      m_curSWFlowInfo[swID][flow] = 0;
+      m_curSWFlowInfo[swID][flow] = packetCnt;
 
       /* If it's a new flow doesn't collected among switches before,
        * add to m_passNewFlows
@@ -305,11 +373,15 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
     }
  
   //Contruct and Solve the linear equations with lsqr
-  double* A[m]; //Proxy
-  double  b[m];
+  //double* A[m]; //Proxy
+  //double  b[m];
+  double* A[1];
+  double  b[1]; /*disable the lsqr solver*/
     
-  double* AA = new double[m*n];
- 
+  //double* AA = new double[m*n];
+  double* AA = new double[10];
+
+  /*
   for(unsigned i = 0; i < m; ++i)
     {
       A[i] = &(AA[i*n]);
@@ -318,6 +390,7 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
 	  A[i][j] = 0.0;
 	}
     }
+  */
 
   if( !ConstructLinearEquations (A, b, m, n, target) )
     {
@@ -326,7 +399,8 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
       delete [] AA;
       return oss.str();
     }
- 
+
+  /*
   lsqrDense solver;
   //lsmrDense solver;
   const double eps = 1e-5;
@@ -347,17 +421,17 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
       x[jth] = 0.0; //at least 1packet, ps, no use, solver will clear it into 0...
     }
   
+  
   solver.Solve(m, n, b, x);
 
   oss << "Stopped because " << solver.GetStoppingReason() << " : " << solver.GetStoppingReasonMessage() << "\n";
   oss << "Used " << solver.GetNumberOfIterationsPerformed() << " Iters" << "\n";
-   
-  /*
-  for(unsigned jth = 0; jth < n; ++jth)
-    {
-      NS_LOG_INFO(x[jth]);
-    }
-  */
+  
+  //for(unsigned jth = 0; jth < n; ++jth)
+    //{
+      //NS_LOG_INFO(x[jth]);
+    //}
+  
 
   //Fill the m_curSWFlowInfo packet info
   FlowInfo_t &swDcdFlowInfo = m_curSWFlowInfo.at(swID);
@@ -372,13 +446,14 @@ FlowDecoder::CounterSingleDecode (Ptr<FlowEncoder> target)
     }
     
   delete []  AA;
-
+  */
   return oss.str();
 }
 
 void
 FlowDecoder::CounterAllDecode ()
 {
+  NS_LOG_INFO("Counter Decode Start");
   //Add encoders to work queue;
   NS_ASSERT(m_workQueue.IsEmpty());
   for (unsigned ith = 0; ith < m_encoders.size(); ++ith)
@@ -429,7 +504,7 @@ FlowDecoder::ConstructLinearEquations (double* A[], double b[],
       std::vector<uint32_t> rowIdxs = target->GetCountTableIdx(flow);
       for (unsigned ith = 0; ith < rowIdxs.size(); ++ith)
 	{
-	  A[rowIdxs[ith]][col] = 1.0;
+	  //A[rowIdxs[ith]][col] = 1.0;
 	}
     }
 
@@ -437,7 +512,7 @@ FlowDecoder::ConstructLinearEquations (double* A[], double b[],
   
   for(unsigned row = 0; row < m; ++row)
     {
-      b[row] = swCountTable[row].packet_cnt;
+      //b[row] = swCountTable[row].packet_cnt;
       
       //not all flow decoded out, Update the swtch status
       if(swStat.IsAllDecoded && swCountTable[row].flow_cnt > 0)

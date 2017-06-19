@@ -1,6 +1,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <cstdlib>
 
 #include "flow-encoder.h"
 #include "openflow-switch-net-device.h"
@@ -17,10 +18,15 @@ NS_LOG_COMPONENT_DEFINE("FlowEncoder");
 
 NS_OBJECT_ENSURE_REGISTERED(FlowEncoder);
 
+unsigned FlowEncoder::m_nextSeed = 0;
   
-FlowEncoder::FlowEncoder()
+FlowEncoder::FlowEncoder() : m_packetReceived(0)
 {
   Clear();
+  for( size_t ithSeed = 0; ithSeed < NUM_COUNT_HASH; ++ithSeed )
+    {
+      m_seeds.push_back( ++m_nextSeed ); //ensure 
+    }
 }
 
 FlowEncoder::~FlowEncoder()
@@ -97,6 +103,13 @@ FlowEncoder::ReceiveFromOpenFlowSwtch(Ptr<NetDevice> ofswtch,
   bool        isNewFlow = UpdateFlowFilter (flow);   
   if (isNewFlow) NS_LOG_INFO("New flow");
   UpdateCountTable (flow, isNewFlow);
+
+  /*Update real flow counter for checking*/
+  UpdateRealFlowCounter (flow);
+
+  if( ++m_packetReceived % 1000 == 0 )
+    std::cout << "FlowEncoder " << m_id << " received packets "
+	      << m_packetReceived << std::endl; 
   
   return true;
 }
@@ -108,6 +121,7 @@ FlowEncoder::Clear()
   m_flowFilter.reset();
   m_countTable.clear();
   m_countTable.resize(COUNT_TABLE_SIZE, CountTableEntry());
+  m_realFlowCounter.clear();
 }
 
 bool
@@ -157,6 +171,19 @@ FlowEncoder::UpdateCountTable(const FlowField& flow, bool isNew)
 
 }
 
+void
+FlowEncoder::UpdateRealFlowCounter(const FlowField& flow)
+{
+  FlowInfo_t::iterator itFlow;
+  if( (itFlow = m_realFlowCounter.find(flow)) == m_realFlowCounter.end() )
+    {
+      m_realFlowCounter[flow] = 1;
+    }
+  else
+    {
+      itFlow->second += 1;
+    } 
+}
 
 std::vector<uint32_t>
 FlowEncoder::GetFlowFilterIdx(const FlowField& flow)
@@ -203,7 +230,8 @@ FlowEncoder::GetCountTableIdx(const FlowField& flow)
       memcpy(buf + 12, &(flow.ipv4prot) , 1);
       
       //ith is also work as a seed of hash function
-      uint32_t idx    = murmur3_32(buf, 13, ith);
+      //uint32_t idx    = murmur3_32(buf, 13, ith);
+      uint32_t idx    = murmur3_32(buf, 13, m_seeds[ith]);
       uint32_t offset = ith * COUNT_TABLE_SUB_SIZE;
       
       //according to the P4 modify_field_with_hash_based_offset

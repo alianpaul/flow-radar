@@ -28,8 +28,10 @@ public:
    */
   void SetPacketTrace(const char* filename, float endTime);
 
-  void GenRandomUDPFlow (int flowCnt);
+  void GenElephantMouseFlow(int flowCnt, float bandwidth, float endTime);
   
+  void GenRandomUDPFlow (int flowCnt);
+
   void GenTCPFlow(int src, int dst, uint16_t port, uint32_t maxBytes,
 		  float startTime);
   
@@ -40,8 +42,21 @@ private:
   AppGen(const AppGen&);
   AppGen& operator=(const AppGen&);
 
+  /*Used by GenElephantMouseFlow to generate elephant mouse flow at host*/
+  void DoGenFlowsAtSource(int sourceID, int flowCnt,
+			 float bandwidth, float endTime);
+
+  void DoGenFlow(int src, int dst, int dstport, float bd,
+		 float startTime, float endTime);
+
+  void GetTwoDiffHost(int& from, int& to);
+
+  int  GetDiffHostRandomly(int from);
+
+  int                                 m_port;
   Ptr<DCTopology>                     m_topo;
   std::vector<Ptr<PacketGenerator> >  m_packetGenerators;
+  int                                 m_flowNotGeneratedCnt;
 };
 
 }

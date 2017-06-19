@@ -13,6 +13,7 @@
 #include "ns3/node-container.h"
 #include "ns3/net-device-container.h"
 #include "ns3/ipv4-interface-container.h"
+#include "ns3/matrix-decoder.h"
 
 #include "graph-algo.h"
 #include "easy-controller.h"
@@ -20,6 +21,7 @@
 namespace ns3 {
 
 class FlowDecoder;
+class MatrixDecoder;
   
 class DCTopology : public Object {
   
@@ -41,10 +43,12 @@ public:
    *   0.no trace
    *   1.pcap trace
    *   2.ascii trace
-   * @enableFlowRadar:
+   * @radarType:
+   *   0.flow radar
+   *   1.mtx radar
    */
   void BuildTopo (const char* filename, int traceType,
-		  bool  enableFlowRadar);
+		  int radarType);
 
   Graph::Path_t                GetPath    (int from, int to) const;
   unsigned                     GetNumHost () const;
@@ -68,7 +72,7 @@ private:
    * generated automatically by up layer protocol. All packet is generated
    * manually).  
    */
-  void Init(bool enableFlowRadar);
+  void Init(int radarType);
   
   /*Create ns3 Nodes in the NodeContainer according to the Topofile.
    *Also intall internet stack on all nodes
@@ -98,6 +102,11 @@ private:
    */
   void CreateFlowRadar ();
 
+  /*
+   * Another flow measurement.
+   */
+  void CreateMatrixRadar();
+  
   /* Set IP addresses of the hosts and openflow switches
    * and also set ARP cache permantly, because this simulation is focused on
    * ethernet IP packetets. We don't want any ethernet ARP broadcast packets flow 
@@ -117,6 +126,7 @@ private:
   std::vector<NetDeviceContainer> m_switchPortDevices;
 
   Ptr<FlowDecoder>                m_flowRadar;
+  Ptr<MatrixDecoder>              m_matrixRadar;
   Ptr<ofi::EasyController>        m_easyController;
 
   Graph                           m_graph;             //Store All path info

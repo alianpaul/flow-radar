@@ -14,6 +14,8 @@
 #include "openflow-switch-net-device.h"
 #include "flow-encoder.h"
 #include "flow-decoder.h"
+#include "matrix-decoder.h"
+#include "matrix-encoder.h"
 
 namespace ns3 {
 
@@ -34,7 +36,7 @@ DCTopology::GetTypeId(void)
 
 void
 DCTopology::BuildTopo (const char* filename, int traceType,
-		       bool enableFlowRadar)
+		       int radarType)
 {
   NS_LOG_FUNCTION(this);
 
@@ -53,16 +55,24 @@ DCTopology::BuildTopo (const char* filename, int traceType,
   
   CreateOFSwitches ();
 
-  if(enableFlowRadar)
-    CreateFlowRadar (); //for flow radar
-  
+  if(radarType == 0)
+    {
+      CreateFlowRadar (); //for flow radar
+    }
+  else if(radarType == 1)
+    {
+      CreateMatrixRadar();
+    }
+ 
   /* Set the internet stack,ATTENTION: must set internet stack after all
    * NetDevices installed, or, the switch port id will start by 1 which should 
    * be 0;
    */
   SetIPAddrAndArp ();
 
-  Init(enableFlowRadar);
+  Init(radarType);
+  
+  NS_LOG_INFO("Build Topo finished");
 }
 
 //Mute callback that do nothing.
@@ -79,10 +89,19 @@ bool MutePromiscReceiveCallback(Ptr<NetDevice>, Ptr<const Packet>, uint16_t, con
 }
   
 void
-DCTopology::Init(bool enableFlowRadar)
+DCTopology::Init(int radarType)
 {
-  if(enableFlowRadar)
-    m_flowRadar->Init();
+
+  NS_LOG_FUNCTION(this);
+  
+  if(radarType == 0)
+    {
+      m_flowRadar->Init();
+    }
+  else if(radarType == 1)
+    {
+      m_matrixRadar->Init();
+    }
   
   m_easyController->SetTopo(Ptr<DCTopology>(this));
   m_easyController->SetDefaultFlowTable();
@@ -194,8 +213,8 @@ DCTopology::CreateNetDevices (std::ifstream& file, int traceType)
   NS_LOG_FUNCTION(this);
 
   CsmaHelper csma;
-  csma.SetChannelAttribute ("DataRate", StringValue ("100Mbps"));
-  csma.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (6560)));
+  csma.SetChannelAttribute ("DataRate", StringValue ("10Gbps"));
+  //csma.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (6560)));
 
   Graph::AdjList_t adjList;
   adjList.resize( m_numSw + m_numHost );
@@ -296,6 +315,21 @@ DCTopology::CreateFlowRadar ()
       
     }
 
+}
+
+void
+DCTopology::CreateMatrixRadar()
+{
+  NS_LOG_FUNCTION(this);
+
+  m_matrixRadar = CreateObject<MatrixDecoder>();
+
+  for(int idSW = 0; idSW < m_numSw; ++idSW)
+    {
+      Ptr<MatrixEncoder> mtxEncoder = CreateObject<MatrixEncoder> ();
+      mtxEncoder->SetOFSwtch( m_OFSwtchDevices.Get(idSW), idSW + m_numHost);	
+      m_matrixRadar->AddEncoder(mtxEncoder);
+    }
 }
 
 void
